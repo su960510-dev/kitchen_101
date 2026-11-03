@@ -113,10 +113,16 @@ URL과 직접 쓴 제목·메모만 저장합니다. 외부 본문, 사진, 영�
 
 ## 다음 작업
 
-1. 터미널에서 `sudo xcodebuild -license accept`를 실행합니다.
-2. `npm run ios`로 Swift 모듈을 컴파일하고 시뮬레이터에서 실행합니다.
-3. iPhone에서 한국어 라벨 OCR과 알림을 확인하고 `docs/OCR_BENCHMARKS.md`, `docs/TESTING.md`에 기록합니다.
-4. [로드맵](docs/ROADMAP.md)의 남은 항목을 진행합니다.
+실기기 테스트는 나중에 진행하기로 했습니다. 재개할 때 아래 순서로 준비합니다.
+
+1. 터미널에서 `sudo xcodebuild -license accept`를 실행합니다(Mac 로그인 비밀번호 필요).
+2. CocoaPods를 설치합니다(현재 이 개발 Mac에 없음).
+3. Xcode에 Apple 계정을 추가합니다. 현재 코드 서명 인증서가 없습니다. 무료 Apple ID로 설치한 앱은 7일 뒤 만료됩니다.
+4. iPhone을 연결해 이 컴퓨터를 신뢰하고 개발자 모드를 켭니다.
+5. `npm run ios`로 Swift 모듈을 컴파일해 실행하고, 한국어 라벨 OCR과 알림을 확인해 `docs/OCR_BENCHMARKS.md`, `docs/TESTING.md`에 기록합니다.
+6. [로드맵](docs/ROADMAP.md)의 남은 항목을 진행합니다.
+
+Xcode 없이 설치하려면 유료 Apple Developer 계정과 EAS 클라우드 빌드가 필요합니다. iPhone은 서명 없는 설치 파일을 옮겨서 설치할 수 없습니다. Android APK는 파일로 옮겨 설치할 수 있지만 OCR 없이 직접 입력으로 동작합니다.
 
 ## 작업 내역 (Work Log)
 
@@ -161,3 +167,24 @@ URL과 직접 쓴 제목·메모만 저장합니다. 외부 본문, 사진, 영�
 - Dynamic Type, VoiceOver, Reduce Motion
 
 **라이선스·비용 검토**: 2026-11-03. 미해결: 보드 이미지 권리, 앱 내 라이선스 전문 화면.
+
+### 2026-11-03: GitHub 첫 푸시와 iPhone 설치 준비 점검
+
+**진행**
+
+- 첫 커밋을 GitHub `main`에 푸시하고 원격과 로컬의 커밋이 같은 것을 확인
+- 이 저장소의 원격 주소가 저장소 소유자 계정을 쓰도록 지정 (전역 git 인증은 변경하지 않음)
+- 연결된 iPhone 설치 가능 여부 점검, 재개 절차를 `다음 작업`에 정리
+
+**점검 결과**
+
+| 항목 | 결과 |
+| --- | --- |
+| Xcode 라이선스 | 미동의. `xcodebuild`, `simctl`, `devicectl` 사용 불가 |
+| 연결된 iPhone | 조회 불가 |
+| 코드 서명 인증서 | 0개 |
+| CocoaPods | 미설치 |
+
+**결정**: 실기기 테스트는 사용자 판단으로 나중에 진행한다.
+
+**미실행·미검증**: 앱 코드는 변경하지 않았고 이번 작업에서 테스트를 다시 실행하지 않았다. iOS·Android 빌드와 기기 실행, OCR은 여전히 미검증이다.
