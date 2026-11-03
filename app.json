@@ -1,0 +1,92 @@
+{
+  "expo": {
+    "name": "Jubu1dan",
+    "slug": "jubu-1dan",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app/icon.png",
+    "scheme": "jubu1dan",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "app.jubu1dan.mobile",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.jubu1dan.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#F8F6F2",
+        "foregroundImage": "./assets/images/app/adaptive-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_CONTACTS",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "com.google.android.gms.permission.AD_ID"
+      ]
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/app/favicon.png",
+      "name": "주부1단",
+      "shortName": "주부1단",
+      "themeColor": "#F9F7F4",
+      "backgroundColor": "#F9F7F4"
+    },
+    "plugins": [
+      [
+        "./plugins/with-display-name",
+        {
+          "displayName": "주부1단"
+        }
+      ],
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F9F7F4",
+          "image": "./assets/images/app/splash-icon.png",
+          "imageWidth": 140,
+          "dark": {
+            "backgroundColor": "#171614",
+            "image": "./assets/images/app/splash-icon.png"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "직접 고른 포장 라벨이나 음식 사진을 기기 안에서 읽고 저장하기 위해 사용해요.",
+          "cameraPermission": "포장 라벨의 날짜를 기기 안에서 읽고, 식재료·레시피 사진을 찍기 위해 사용해요.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#5EA84F"
+        }
+      ],
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-font",
+      "expo-image",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "reactCompiler": true
+    },
+    "owner": "lcm2"
+  }
+}

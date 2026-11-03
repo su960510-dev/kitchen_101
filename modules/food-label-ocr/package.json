@@ -1,0 +1,7 @@
+{
+  "name": "food-label-ocr",
+  "version": "0.1.0",
+  "description": "Apple Vision 기반 온디바이스 라벨 텍스트 인식",
+  "private": true,
+  "main": "index.ts"
+}
