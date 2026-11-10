@@ -1,5 +1,5 @@
 import { extractBodyText, extractJsonLdRecipe, htmlToText } from '@/features/recipes/link-import/html-extract';
-import { parsePage, readableUrl } from '@/features/recipes/link-import/link-recipe-importer';
+import { isUnsupportedHost, parsePage, readableUrl } from '@/features/recipes/link-import/link-recipe-importer';
 import { pickYoutubeRecipe, toYoutubeSources, youtubeVideoId } from '@/features/recipes/link-import/youtube';
 
 // 모든 HTML·JSON 은 테스트용으로 직접 만든 합성 데이터다.
@@ -67,6 +67,15 @@ describe('html extraction', () => {
     expect(readableUrl('https://blog.naver.com/cook123/223456789')).toBe('https://m.blog.naver.com/cook123/223456789');
     expect(readableUrl('https://blog.naver.com/PostView.naver?blogId=cook123&logNo=223456789')).toBe('https://m.blog.naver.com/cook123/223456789');
     expect(readableUrl('https://example.com/a')).toBe('https://example.com/a');
+  });
+});
+
+describe('unsupported hosts', () => {
+  it('recognizes SNS that need login', () => {
+    expect(isUnsupportedHost('https://www.instagram.com/p/abc/')).toBe(true);
+    expect(isUnsupportedHost('https://instagr.am/p/abc')).toBe(true);
+    expect(isUnsupportedHost('https://blog.naver.com/a/1')).toBe(false);
+    expect(isUnsupportedHost('https://notinstagram.com/a')).toBe(false);
   });
 });
 

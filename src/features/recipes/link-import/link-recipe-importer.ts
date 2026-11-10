@@ -18,14 +18,14 @@ export interface LinkImportResult {
 const TIMEOUT_MS = 12_000;
 const MAX_BYTES = 3_000_000;
 
-async function fetchText(url: string): Promise<string> {
+async function fetchPage(url: string): Promise<{ text: string; finalUrl: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal, headers: { Accept: 'text/html,application/json' } });
     if (!res.ok) throw new AppError('unknown', `페이지를 열지 못했어요. (${res.status})`);
     const text = await res.text();
-    return text.length > MAX_BYTES ? text.slice(0, MAX_BYTES) : text;
+    return { text: text.length > MAX_BYTES ? text.slice(0, MAX_BYTES) : text, finalUrl: res.url || url };
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError('unknown', '페이지를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.', error);
@@ -45,6 +45,15 @@ export function readableUrl(url: string): string {
     if (id && logNo) return `https://m.blog.naver.com/${id}/${logNo}`;
   }
   return url;
+}
+
+async function fetchText(url: string): Promise<string> {
+  return (await fetchPage(url)).text;
+}
+
+/** 로그인 없이는 게시물 글을 읽을 수 없고 약관도 자동 수집을 막는 곳 */
+export function isUnsupportedHost(url: string): boolean {
+  return /(^|\.)(instagram\.com|instagr\.am|threads\.net|facebook\.com|fb\.watch|tiktok\.com)$/.test(new URL(url).hostname);
 }
 
 export function parsePage(html: string): { parsed: ParsedRecipeText; source: ImportSource } | null {
@@ -79,7 +88,13 @@ export async function importRecipeFromLink(input: string, youtubeApiKey?: string
     if (!pick) throw new AppError('unknown', '설명란과 메인 댓글에서 재료를 찾지 못했어요. 레시피 글을 복사해 붙여넣어 주세요.');
     return { url, parsed: pick.parsed, source: pick.source };
   }
-  const page = parsePage(await fetchText(readableUrl(url)));
+  if (isUnsupportedHost(url)) throw new AppError('unknown', '인스타그램 같은 SNS는 로그인이 필요해 불러올 수 없어요. 게시물 캡션을 복사해 아래 칸에 붙여넣어 주세요.');
+  let fetched = await fetchPage(readableUrl(url));
+  // naver.me 같은 짧은 링크는 열어 본 뒤에야 블로그 PC 주소가 나온다. PC 화면은 본문이 iframe 안에 있어 모바일로 다시 연다.
+  const mobile = readableUrl(fetched.finalUrl);
+  if (mobile !== fetched.finalUrl) fetched = await fetchPage(mobile);
+  if (isUnsupportedHost(fetched.finalUrl)) throw new AppError('unknown', '로그인이 필요한 페이지라 불러올 수 없어요. 레시피 글을 복사해 붙여넣어 주세요.');
+  const page = parsePage(fetched.text);
   if (!page) throw new AppError('unknown', '본문에서 재료와 순서를 찾지 못했어요. 레시피 글을 복사해 붙여넣어 주세요.');
   return { url, ...page };
 }
