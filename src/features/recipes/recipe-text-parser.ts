@@ -80,6 +80,8 @@ export function parseRecipeText(input: string): ParsedRecipeText {
     .filter(Boolean);
   const result: ParsedRecipeText = { ingredients: [], steps: [] };
   let mode: 'unknown' | 'ingredients' | 'steps' = 'unknown';
+  // '만드는 법' 같은 제목이 있으면 그 앞의 문장(인사말, 소개)은 순서로 보지 않는다.
+  const hasStepHeader = lines.some((l) => STEP_HEADER.test(l));
 
   for (const [index, line] of lines.entries()) {
     const servings = /(\d+)\s*인분/.exec(line);
@@ -113,7 +115,7 @@ export function parseRecipeText(input: string): ParsedRecipeText {
       continue;
     }
 
-    if (mode === 'steps' || looksLikeStep(line)) {
+    if (mode === 'steps' || (!hasStepHeader && looksLikeStep(line))) {
       const step = line.replace(NUMBERED, '').replace(BULLET, '').trim();
       if (step) result.steps.push(step);
       mode = 'steps';

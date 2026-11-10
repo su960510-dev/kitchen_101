@@ -14,7 +14,7 @@ import { saveRecipe } from './recipe-service';
 import type { ParsedRecipeText } from './recipe-text-parser';
 
 /** 붙여넣은 글에서 만든 초안. 사용자가 확인·수정한 뒤에만 저장된다. */
-export type RecipeDraft = ParsedRecipeText & { sourceUrl?: string };
+export type RecipeDraft = ParsedRecipeText & { sourceUrl?: string; sourceLabel?: string };
 
 interface IngredientDraft {
   name: string;
@@ -96,7 +96,7 @@ export function RecipeEditor({ initial, draft }: { initial?: RecipeDetail; draft
     <Screen>
       <Header title={recipe ? '레시피 수정' : '레시피 등록'} />
       <ScreenScroll footer={<PrimaryButton label="레시피 저장" onPress={save} loading={saving} />}>
-        {draft ? <InfoNote>붙여넣은 글에서 정리한 초안이에요. 재료와 순서를 확인하고 고친 뒤 저장해 주세요.</InfoNote> : null}
+        {draft ? <InfoNote>{draft.sourceLabel ?? '붙여넣은 글'}에서 정리한 초안이에요. 재료와 순서를 확인하고 고친 뒤 저장해 주세요.</InfoNote> : null}
         {photo ? <AppImage uri={photo} style={s.photo} label="레시피 사진" /> : null}
         <View style={s.row}>
           <SecondaryButton
