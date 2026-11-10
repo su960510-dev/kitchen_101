@@ -18,7 +18,7 @@
 
 ## 구매일 기준 추정 보관 기한 (2026-11-10, 사용자 결정)
 
-프롬프트 §2.3의 금지를 사용자가 명시적으로 바꿨다(`DECISIONS.md` D-17). 포장 날짜가 없고 구매일이 있으며, 출처가 확인된 품목 데이터가 있을 때만 `추정 보관 기한`을 만든다. 계산은 `food-safety/storage-estimate.ts` 한 곳에 있고 테스트는 `storage-estimate.test.ts`다. 현재 데이터는 0건이다.
+프롬프트 §2.3의 금지를 사용자가 명시적으로 바꿨다(`DECISIONS.md` D-17). 포장 날짜가 없고 구매일이 있으며, 출처가 확인된 품목 데이터가 있을 때만 `추정 보관 기한`을 만든다. 계산은 `food-safety/storage-estimate.ts` 한 곳에 있고 테스트는 `storage-estimate.test.ts`다. 데이터는 USDA FoodKeeper 기반 50개 품목이다(D-20).
 
 ## 금지 사항
 
@@ -26,7 +26,7 @@
 
 ## 품목 보관 기간 데이터
 
-`STORAGE_GUIDANCE`는 비어 있다. 값을 추가하려면 출처 URL, 출처의 품목명, 확인일이 필요하고 `npm run verify:food-guidance`가 이를 검사한다. 데이터가 없는 품목은 `날짜를 직접 정해 주세요`라고 안내한다.
+`STORAGE_GUIDANCE`는 `storage-guidance.data.ts`(자동 생성, 50개 품목)다. 값을 추가하려면 `scripts/build-storage-guidance.mjs`의 매핑을 고치고 다시 실행한다. 직접 값을 넣으려면 출처 URL, 출처의 품목명, 확인일이 필요하고 `npm run verify:food-guidance`가 이를 검사한다. 데이터가 없는 품목은 `날짜를 직접 정해 주세요`라고 안내한다.
 
 ## UI
 

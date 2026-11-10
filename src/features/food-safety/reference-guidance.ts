@@ -1,5 +1,7 @@
 import type { InventoryCategory, StorageLocation } from '@/domain/models';
 
+import { FOODKEEPER_GUIDANCE } from './storage-guidance.data';
+
 /**
  * 품목별 구매 후 보관 기간. 사용자 요청(2026-11-10)으로 구매일 기준 추정 기한을 자동 설정한다(DECISIONS D-17).
  * 공개 출처에서 확인한 값만 넣는다. 출처 없는 수치를 추가하지 않으며 scripts/verify-food-guidance.ts 가 검사한다.
@@ -18,4 +20,4 @@ export interface StorageGuidance {
   lastVerifiedOn: string;
 }
 
-export const STORAGE_GUIDANCE: StorageGuidance[] = [];
+export const STORAGE_GUIDANCE: StorageGuidance[] = FOODKEEPER_GUIDANCE;

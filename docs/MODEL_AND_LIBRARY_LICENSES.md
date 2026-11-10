@@ -38,3 +38,7 @@
 - Apple Vision: iOS SDK 프레임워크. 별도 번들 없음. Apple 개발자 약관을 따른다.
 - Google ML Kit: 미사용. Android OCR 구현 시 Google 이용약관, 앱 크기, 모델 전달 방식을 따로 검토한다. 오픈소스 라이브러리와 조건이 같지 않다.
 - 폰트: 시스템 폰트만 사용. 아이콘: 직접 그린 벡터.
+
+## 데이터
+
+- USDA FSIS FoodKeeper Data: CC0 1.0 (data.gov 메타데이터 기준). 앱에는 50개 품목의 일수 요약만 포함한다. 사본 저장소 jelera/food-shelflife-db에는 라이선스 표기가 없으며, 데이터 자체는 USDA 원본이라고 명시되어 있다.

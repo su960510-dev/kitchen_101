@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import { STORAGE_GUIDANCE } from '../src/features/food-safety/reference-guidance.ts';
+import { FOODKEEPER_GUIDANCE as STORAGE_GUIDANCE } from '../src/features/food-safety/storage-guidance.data.ts';
 
 const problems: string[] = [];
 

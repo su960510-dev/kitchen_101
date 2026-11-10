@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppImage, CalendarSheet, Chip, DateRow, FieldLabel, Header, ILLUSTRATIONS, IconButton, Icon, InfoNote, OptionSheet, PrimaryButton, SampleBadge, Screen, ScreenScroll, TextField, ToggleRow, spacing, useColors, useStyles, type Colors, type IconName } from '@/design-system';
+import { AppImage, CalendarSheet, Chip, DateRow, FieldLabel, Header, ILLUSTRATIONS, IconButton, Icon, InfoNote, OptionSheet, PrimaryButton, SampleBadge, Stepper, Screen, ScreenScroll, TextField, ToggleRow, spacing, useColors, useStyles, type Colors, type IconName } from '@/design-system';
 import { formatFull, isDateOnly, todayKst, type DateOnly } from '@/domain/date-only';
 import { userMessageOf } from '@/domain/errors';
 import { CATEGORY_LABELS, type DateSource, type DateType, type InventoryCategory, type StorageLocation } from '@/domain/models';
@@ -19,6 +19,8 @@ import { useAppState, useDb } from '@/hooks/app-state';
 import { notify } from '@/utils/dialogs';
 
 type DateField = 'label' | 'reminder' | 'purchase' | 'received' | 'opened' | 'cooked';
+
+const STORAGE_LABEL: Record<StorageLocation, string> = { FRIDGE: '냉장', FREEZER: '냉동', PANTRY: '상온', OTHER: '기타' };
 
 const STORAGES: { key: StorageLocation; label: string; icon: IconName }[] = [
   { key: 'FRIDGE', label: '냉장', icon: 'snow' },
@@ -59,8 +61,8 @@ export default function InventoryFormScreen() {
   const [cooked, setCooked] = useState<DateOnly>();
   const [isMom, setIsMom] = useState(isMomInitial);
   const [isOpened, setIsOpened] = useState(false);
-  const [quantity, setQuantity] = useState('');
-  const [unit, setUnit] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [unit, setUnit] = useState('개');
   const [note, setNote] = useState('');
   const [notifyEnabled, setNotifyEnabled] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | undefined>(params.photoUri);
@@ -92,7 +94,7 @@ export default function InventoryFormScreen() {
       setCooked(item.cookedDate);
       setIsMom(item.isMomSideDish);
       setIsOpened(item.isOpened);
-      setQuantity(item.quantity != null ? String(item.quantity) : '');
+      setQuantity(item.quantity ?? 0);
       setUnit(item.unit ?? '');
       setNote(item.note ?? '');
       setNotifyEnabled(item.notifyEnabled);
@@ -116,7 +118,6 @@ export default function InventoryFormScreen() {
     if (field === 'cooked') setCooked(value);
   };
   const estimate = !isMom && !labelDate ? estimateFromPurchase({ name: name.trim(), storageLocation: storage, purchaseDate: purchase }) : null;
-  const purchaseHint = isMom || labelDate || !purchase ? undefined : estimate ? `추정 보관 기한 ${formatFull(estimate.date)} · ${estimate.days}일 (${estimate.sourceName})` : '이 품목은 자동 기간 정보가 없어요. 날짜를 직접 정해 주세요.';
   const dateValue: Record<DateField, DateOnly | undefined> = { label: labelDate, reminder, purchase, received, opened, cooked };
   const dateTitle: Record<DateField, string> = {
     label: DATE_TYPE_LABELS[labelType],
@@ -153,13 +154,12 @@ export default function InventoryFormScreen() {
       let storedPhoto = photoIsNew ? undefined : photoUri;
       if (photoIsNew && photoUri && keepPhoto) storedPhoto = await importPhoto(photoUri, 'inventory', id ?? `new${Date.now()}`);
       if (!photoIsNew && !photoUri) storedPhoto = undefined;
-      const parsedQuantity = quantity.trim() === '' ? undefined : Number(quantity);
       const saved = await saveItem(db, {
         id,
         name,
         category,
         storageLocation: storage,
-        quantity: parsedQuantity,
+        quantity: quantity > 0 ? quantity : undefined,
         unit,
         purchaseDate: purchase,
         receivedDate: received,
@@ -237,8 +237,7 @@ export default function InventoryFormScreen() {
               <Icon name="chevron" size={14} color={c.sub} />
             </Pressable>
             <View style={{ height: 8 }} />
-            <DateRow label="구매일" value={purchase} placeholder="미입력" onPress={() => setPicker('purchase')} hint={purchaseHint} />
-            {estimate ? <InfoNote>{SAFETY_COPY.estimateNote}</InfoNote> : null}
+            <DateRow label="구매일" value={purchase} placeholder="미입력" onPress={() => setPicker('purchase')} />
           </>
         )}
 
@@ -249,18 +248,35 @@ export default function InventoryFormScreen() {
           ))}
         </View>
 
+        {!isMom && !labelDate && purchase ? (
+          <View style={[s.estimate, !estimate && s.estimateEmpty]} accessibilityLiveRegion="polite">
+            {estimate ? (
+              <>
+                <Text style={s.estimateLabel}>추정 보관 기한</Text>
+                <Text style={s.estimateDate}>{formatFull(estimate.date)}</Text>
+                <Text style={s.estimateMeta}>
+                  구매일 + {estimate.days}일 · {STORAGE_LABEL[storage]} 기준 · {estimate.sourceName}
+                </Text>
+              </>
+            ) : (
+              <Text style={s.estimateMeta}>{name.trim() ? `${name.trim()}은(는) ${STORAGE_LABEL[storage]} 보관 기간 정보가 없어요. 날짜를 직접 정해 주세요.` : '이름을 입력하면 추정 보관 기한을 계산해요.'}</Text>
+            )}
+          </View>
+        ) : null}
+        {estimate ? <InfoNote>{SAFETY_COPY.estimateNote}</InfoNote> : null}
+
+        <FieldLabel>구매 개수</FieldLabel>
+        <View style={s.qtyRow}>
+          <Stepper label="구매 개수" value={quantity} min={0} max={999} onChange={setQuantity} />
+          <TextField value={unit} onChangeText={setUnit} placeholder="단위 (개, g, 통)" label="단위" style={{ flex: 1 }} />
+        </View>
+
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: more }} onPress={() => setMore((v) => !v)} style={s.moreToggle}>
           <Text style={s.moreText}>{more ? '간단히 입력하기' : '자세히 입력하기'}</Text>
         </Pressable>
 
         {more ? (
           <>
-            <FieldLabel>수량 (선택)</FieldLabel>
-            <View style={s.qtyRow}>
-              <TextField value={quantity} onChangeText={setQuantity} placeholder="수량" keyboardType="decimal-pad" style={{ flex: 1 }} />
-              <TextField value={unit} onChangeText={setUnit} placeholder="단위 (개, g, 통)" style={{ flex: 1 }} />
-            </View>
-
             <FieldLabel>관리 알림</FieldLabel>
             <DateRow label="내 관리 알림 날짜" value={reminder} placeholder="미설정" onPress={() => setPicker('reminder')} />
             <InfoNote>{isMom ? SAFETY_COPY.momSideDishNote : SAFETY_COPY.personalReminderNote}</InfoNote>
@@ -308,5 +324,10 @@ const styles = (c: Colors) =>
     chips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     moreToggle: { alignSelf: 'center', paddingVertical: 12, marginTop: spacing.lg },
     moreText: { color: c.sub, fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
-    qtyRow: { flexDirection: 'row', gap: 10 },
+    qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    estimate: { marginTop: spacing.lg, backgroundColor: c.greenSoft, borderRadius: 16, padding: spacing.lg, gap: 4 },
+    estimateEmpty: { backgroundColor: c.neutralBg },
+    estimateLabel: { color: c.greenDark, fontSize: 14, fontWeight: '700' },
+    estimateDate: { color: c.ink, fontSize: 22, fontWeight: '700' },
+    estimateMeta: { color: c.sub, fontSize: 13, lineHeight: 19 },
   });

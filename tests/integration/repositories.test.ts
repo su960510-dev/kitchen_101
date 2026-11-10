@@ -39,10 +39,14 @@ describe('inventory', () => {
     expect(read).toMatchObject({ purchaseDate: '2026-11-01', labelDate: '2026-11-03', labelDateType: 'USE_BY', personalReminderDate: '2026-11-02', notifyEnabled: true, isSample: false });
   });
 
-  it('never fills a label date from the purchase date or storage location', async () => {
-    const saved = await saveItem(db, { ...tofu, purchaseDate: '2026-11-01', storageLocation: 'FREEZER' });
-    expect(saved.labelDate).toBeUndefined();
-    expect(saved.personalReminderDate).toBeUndefined();
+  it('estimates only for items with source data and keeps it apart from label dates', async () => {
+    const tofuFrozen = await saveItem(db, { ...tofu, purchaseDate: '2026-11-01', storageLocation: 'FREEZER' });
+    expect(tofuFrozen).toMatchObject({ labelDate: '2027-03-31', labelDateType: 'ESTIMATED_FROM_PURCHASE', dateSource: 'AUTO_ESTIMATE' });
+    expect(tofuFrozen.personalReminderDate).toBeUndefined();
+    const eggs = await saveItem(db, { name: '달걀', category: 'DAIRY', storageLocation: 'FRIDGE', purchaseDate: '2026-11-10' });
+    expect(eggs.labelDate).toBe('2026-12-01');
+    const kimchi = await saveItem(db, { name: '김치', category: 'SIDE_DISH', storageLocation: 'FRIDGE', purchaseDate: '2026-11-10' });
+    expect(kimchi.labelDate).toBeUndefined();
   });
 
   it('requires 받은 날짜 for 엄마표 and sets no default reminder', async () => {
