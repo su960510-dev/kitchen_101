@@ -10,13 +10,14 @@ import { CATEGORY_LABELS, type DateSource, type DateType, type InventoryCategory
 import { DATE_TYPE_LABELS, SELECTABLE_LABEL_TYPES } from '@/features/food-safety/date-policy';
 import { SAFETY_COPY } from '@/features/food-safety/safety-copy';
 import { estimateFromPurchase } from '@/features/food-safety/storage-estimate';
+import { goToInventoryList } from '@/features/inventory/go-to-list';
 import { saveItem } from '@/features/inventory/inventory-service';
 import { pickFromAlbum, takePhoto } from '@/features/inventory/photo-picker';
 import { requestPermission } from '@/infrastructure/notifications/local-notifications';
 import { deleteFile, importPhoto } from '@/infrastructure/file-storage/app-files';
 import { inventoryRepository } from '@/infrastructure/database/repositories/inventory-repository';
 import { useAppState, useDb } from '@/hooks/app-state';
-import { notify } from '@/utils/dialogs';
+import { confirmAction, notify } from '@/utils/dialogs';
 
 type DateField = 'label' | 'reminder' | 'purchase' | 'received' | 'opened' | 'cooked';
 
@@ -94,7 +95,7 @@ export default function InventoryFormScreen() {
       setCooked(item.cookedDate);
       setIsMom(item.isMomSideDish);
       setIsOpened(item.isOpened);
-      setQuantity(item.quantity ?? 0);
+      setQuantity(item.quantity ?? 1);
       setUnit(item.unit ?? '');
       setNote(item.note ?? '');
       setNotifyEnabled(item.notifyEnabled);
@@ -148,6 +149,17 @@ export default function InventoryFormScreen() {
   };
 
   const save = async () => {
+    // 수정 중 개수를 0으로 저장하면 확인 후 품목을 삭제한다.
+    if (editing && quantity === 0 && params.id) {
+      if (!(await confirmAction('품목 삭제', `개수가 0이라 ${name.trim() || '이 품목'}이(가) 삭제됩니다.`, '삭제'))) return;
+      const existing = await inventoryRepository.get(db, params.id);
+      deleteFile(existing?.localPhotoUri);
+      await inventoryRepository.remove(db, params.id);
+      refresh();
+      goToInventoryList();
+      notify('식재료를 삭제했어요');
+      return;
+    }
     setSaving(true);
     try {
       const id = params.id;
@@ -180,9 +192,9 @@ export default function InventoryFormScreen() {
       // 임시 라벨 사진은 보관을 선택하지 않으면 남기지 않는다.
       if (photoIsNew && photoUri && !keepPhoto) deleteFile(photoUri);
       refresh();
-      // 등록·수정 후에는 상세 화면을 거치지 않고 원래 화면(목록·상세)으로 돌아간다.
-      if (router.canGoBack()) router.back();
-      else router.navigate('/inventory');
+      // 저장 후에는 냉장고 목록으로 이동하고 저장 안내를 띄운다.
+      goToInventoryList();
+      notify('식재료가 저장되었어요', name.trim());
     } catch (error) {
       notify(userMessageOf(error));
     } finally {
@@ -268,7 +280,7 @@ export default function InventoryFormScreen() {
 
         <FieldLabel>구매 개수</FieldLabel>
         <View style={s.qtyRow}>
-          <Stepper label="구매 개수" value={quantity} min={0} max={999} onChange={setQuantity} />
+          <Stepper label="구매 개수" value={quantity} min={editing ? 0 : 1} max={999} onChange={setQuantity} />
           <TextField value={unit} onChangeText={setUnit} placeholder="단위 (개, g, 통)" label="단위" style={{ flex: 1 }} />
         </View>
 

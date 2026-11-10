@@ -9,6 +9,7 @@ import { CATEGORY_LABELS, STORAGE_LABELS, type FoodInventoryItem } from '@/domai
 import { DATE_TYPE_LABELS, isLabelDeadline } from '@/features/food-safety/date-policy';
 import { SAFETY_COPY, statusMessage } from '@/features/food-safety/safety-copy';
 import { computeStatus } from '@/features/food-safety/status-calculator';
+import { goToInventoryList } from '@/features/inventory/go-to-list';
 import { restoreItem, saveItem } from '@/features/inventory/inventory-service';
 import type { InventoryInput } from '@/features/inventory/types';
 import { deleteFile } from '@/infrastructure/file-storage/app-files';
@@ -72,10 +73,9 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
     deleteFile(item.localPhotoUri);
     await inventoryRepository.remove(db, item.id);
     refresh();
-    goBack();
+    goToInventoryList();
+    notify('식재료를 삭제했어요');
   };
-
-  const goBack = () => (router.canGoBack() ? router.back() : router.navigate('/inventory'));
 
   const save = async () => {
     // 개수를 0으로 저장하면 확인 후 품목을 삭제한다.
@@ -87,7 +87,8 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
     try {
       await saveItem(db, { ...toInput(item), name, quantity, unit: unit.trim() || undefined, note });
       refresh();
-      goBack();
+      goToInventoryList();
+      notify('식재료가 저장되었어요', name.trim());
     } catch (error) {
       notify(userMessageOf(error));
     } finally {

@@ -14,10 +14,12 @@ export function attentionBanner(attention: FoodInventoryItem[], today: DateOnly,
   const first = attention[0];
   if (!first) return null;
   const s = computeStatus(first, today, leadDays);
+  // 구매일로 계산한 날짜는 포장 표시 날짜와 구분해 '추정 보관 기한'이라고 쓴다.
+  const kind = first.labelDateType === 'ESTIMATED_FROM_PURCHASE' ? '추정 보관 기한' : '표시 날짜';
   let title: string;
-  if (s.labelDaysLeft != null && s.labelDaysLeft < 0) title = '표시 날짜가 지났어요!';
-  else if (s.labelDaysLeft === 0) title = '오늘 표시 날짜예요!';
-  else if (s.labelDaysLeft != null && s.all.includes('LABEL_DATE_SOON')) title = `${s.labelDaysLeft}일 후 표시 날짜예요!`;
+  if (s.labelDaysLeft != null && s.labelDaysLeft < 0) title = `${kind}이 지났어요!`.replace('날짜이', '날짜가');
+  else if (s.labelDaysLeft === 0) title = `오늘이 ${kind}이에요!`.replace('날짜이에요', '날짜예요');
+  else if (s.labelDaysLeft != null && s.all.includes('LABEL_DATE_SOON')) title = `${s.labelDaysLeft}일 후 ${kind}이에요!`.replace('날짜이에요', '날짜예요');
   else title = '내 관리 알림이 다가와요';
   const names = attention.slice(0, 2).map((i) => i.name).join(', ');
   const extra = attention.length - 2;

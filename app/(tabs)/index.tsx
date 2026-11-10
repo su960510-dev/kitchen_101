@@ -104,6 +104,10 @@ export default function HomeScreen() {
           ))}
         </View>
 
+        <Pressable onPress={() => setAdding(true)} accessibilityRole="button" style={({ pressed }) => [s.quick, s.quickInStatus, pressed && { opacity: 0.7 }]}>
+          <Text style={s.quickText}>+ 식재료 빠른 등록</Text>
+        </Pressable>
+
         <SectionHeader title="추천 레시피" trailing="더보기" onPress={() => router.navigate('/recipes')} />
         {recommended ? (
           <RecipeRowCard recipe={recommended.recipe} onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: recommended.recipe.id } })} />
@@ -116,9 +120,6 @@ export default function HomeScreen() {
         <Pressable onPress={() => router.push('/fridge-pick')} accessibilityRole="button" style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}>
           <Text style={s.ctaTitle}>냉장고 파먹기</Text>
           <Text style={s.ctaHint}>날짜가 가까운 재료를 쓰는 내 레시피 찾기</Text>
-        </Pressable>
-        <Pressable onPress={() => setAdding(true)} accessibilityRole="button" style={({ pressed }) => [s.quick, pressed && { opacity: 0.7 }]}>
-          <Text style={s.quickText}>+ 식재료 빠른 등록</Text>
         </Pressable>
 
         {summary && summary.mom.length > 0 ? (
@@ -181,6 +182,7 @@ const styles = (c: Colors) =>
     ctaTitle: { color: c.greenDark, fontSize: 17, fontWeight: '700' },
     ctaHint: { color: c.greenDark, fontSize: 13, marginTop: 4 },
     quick: { marginTop: spacing.md, minHeight: 48, borderRadius: 999, borderWidth: 1, borderColor: c.line, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surface },
+    quickInStatus: { marginTop: 12 },
     quickText: { color: c.ink, fontSize: 15, fontWeight: '600' },
     mutedLine: { color: c.sub, fontSize: 14, lineHeight: 20 },
   });
