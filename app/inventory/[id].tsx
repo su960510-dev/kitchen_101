@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, FieldLabel, FoodThumb, Header, IconButton, InfoNote, MomBadge, Pill, PrimaryButton, SampleBadge, Screen, ScreenScroll, SecondaryButton, Stepper, TextField, ToggleRow, describeItemDate, spacing, useStyles, type Colors } from '@/design-system';
+import { Card, EmptyState, FieldLabel, FoodThumb, Header, InfoNote, MomBadge, Pill, PrimaryButton, SampleBadge, Screen, ScreenScroll, SecondaryButton, Stepper, TextField, ToggleRow, describeItemDate, spacing, useStyles, type Colors } from '@/design-system';
 import { formatFull, todayKst } from '@/domain/date-only';
 import { userMessageOf } from '@/domain/errors';
 import { CATEGORY_LABELS, STORAGE_LABELS, type FoodInventoryItem } from '@/domain/models';
@@ -46,7 +46,8 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
   const s = useStyles(styles);
   const { settings, refresh } = useAppState();
   const [name, setName] = useState(item.name);
-  const [quantity, setQuantity] = useState(item.quantity ?? 0);
+  // 수량이 없던 품목은 1개로 시작한다(0은 저장 시 삭제를 뜻하므로).
+  const [quantity, setQuantity] = useState(item.quantity ?? 1);
   const [unit, setUnit] = useState(item.unit ?? '개');
   const [note, setNote] = useState(item.note ?? '');
   const [saving, setSaving] = useState(false);
@@ -56,7 +57,6 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
   const status = computeStatus(item, today, lead);
   const { pill } = describeItemDate(item, today, lead);
   const finished = !!item.consumedAt || !!item.discardedAt;
-  const changed = name.trim() !== item.name || quantity !== (item.quantity ?? 0) || unit.trim() !== (item.unit ?? '개') || note.trim() !== (item.note ?? '');
 
   const act = async (task: () => Promise<unknown>) => {
     try {
@@ -72,9 +72,10 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
     deleteFile(item.localPhotoUri);
     await inventoryRepository.remove(db, item.id);
     refresh();
-    if (router.canGoBack()) router.back();
-    else router.navigate('/inventory');
+    goBack();
   };
+
+  const goBack = () => (router.canGoBack() ? router.back() : router.navigate('/inventory'));
 
   const save = async () => {
     // 개수를 0으로 저장하면 확인 후 품목을 삭제한다.
@@ -83,16 +84,15 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
       return;
     }
     setSaving(true);
-    await act(() =>
-      saveItem(db, {
-        ...toInput(item),
-        name,
-        quantity,
-        unit: unit.trim() || undefined,
-        note,
-      }),
-    );
-    setSaving(false);
+    try {
+      await saveItem(db, { ...toInput(item), name, quantity, unit: unit.trim() || undefined, note });
+      refresh();
+      goBack();
+    } catch (error) {
+      notify(userMessageOf(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const dateRows: [string, string | undefined][] = [
@@ -104,13 +104,13 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
 
   return (
     <Screen>
-      <Header title="식재료 상세" right={<IconButton icon="note" label="날짜까지 전체 수정" onPress={() => router.push({ pathname: '/inventory/new', params: { id: item.id } })} />} />
+      <Header title="식재료 상세" />
       <ScreenScroll
         footer={
           finished ? (
             <PrimaryButton label="다시 냉장고로 복구" onPress={() => act(() => restoreItem(db, item.id))} />
           ) : (
-            <PrimaryButton label="저장" onPress={save} loading={saving} disabled={!changed && quantity !== 0} />
+            <PrimaryButton label="저장" onPress={save} loading={saving} />
           )
         }>
         <View style={s.head}>
@@ -201,6 +201,7 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
         ) : null}
 
         <View style={s.actions}>
+          <SecondaryButton label="수정" icon="note" onPress={() => router.push({ pathname: '/inventory/new', params: { id: item.id } })} />
           <SecondaryButton
             label="삭제"
             icon="trash"

@@ -154,7 +154,7 @@ export default function InventoryFormScreen() {
       let storedPhoto = photoIsNew ? undefined : photoUri;
       if (photoIsNew && photoUri && keepPhoto) storedPhoto = await importPhoto(photoUri, 'inventory', id ?? `new${Date.now()}`);
       if (!photoIsNew && !photoUri) storedPhoto = undefined;
-      const saved = await saveItem(db, {
+      await saveItem(db, {
         id,
         name,
         category,
@@ -180,8 +180,9 @@ export default function InventoryFormScreen() {
       // 임시 라벨 사진은 보관을 선택하지 않으면 남기지 않는다.
       if (photoIsNew && photoUri && !keepPhoto) deleteFile(photoUri);
       refresh();
-      if (editing) router.back();
-      else router.replace({ pathname: '/inventory/[id]', params: { id: saved.id } });
+      // 등록·수정 후에는 상세 화면을 거치지 않고 원래 화면(목록·상세)으로 돌아간다.
+      if (router.canGoBack()) router.back();
+      else router.navigate('/inventory');
     } catch (error) {
       notify(userMessageOf(error));
     } finally {
