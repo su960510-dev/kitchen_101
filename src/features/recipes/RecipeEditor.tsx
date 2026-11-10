@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { AppImage, Chip, FieldLabel, Header, IconButton, PrimaryButton, Screen, ScreenScroll, SecondaryButton, Stepper, TextField, spacing, useStyles, type Colors } from '@/design-system';
+import { AppImage, Chip, FieldLabel, Header, IconButton, InfoNote, PrimaryButton, Screen, ScreenScroll, SecondaryButton, Stepper, TextField, spacing, useStyles, type Colors } from '@/design-system';
 import { userMessageOf } from '@/domain/errors';
 import { RECIPE_CATEGORIES, type RecipeCategory, type RecipeDetail, type RecipeDifficulty } from '@/domain/models';
 import { pickFromAlbum, takePhoto } from '@/features/inventory/photo-picker';
@@ -11,6 +11,10 @@ import { useAppState, useDb } from '@/hooks/app-state';
 import { notify } from '@/utils/dialogs';
 
 import { saveRecipe } from './recipe-service';
+import type { ParsedRecipeText } from './recipe-text-parser';
+
+/** 붙여넣은 글에서 만든 초안. 사용자가 확인·수정한 뒤에만 저장된다. */
+export type RecipeDraft = ParsedRecipeText & { sourceUrl?: string };
 
 interface IngredientDraft {
   name: string;
@@ -21,28 +25,36 @@ interface IngredientDraft {
 
 const DIFFICULTIES: RecipeDifficulty[] = ['하', '중', '상'];
 
-export function RecipeEditor({ initial }: { initial?: RecipeDetail }) {
+export function RecipeEditor({ initial, draft }: { initial?: RecipeDetail; draft?: RecipeDraft }) {
   const db = useDb();
   const router = useRouter();
   const s = useStyles(styles);
   const { settings, refresh } = useAppState();
   const recipe = initial?.recipe;
 
-  const [title, setTitle] = useState(recipe?.title ?? '');
+  const [title, setTitle] = useState(recipe?.title ?? draft?.title ?? '');
   const [category, setCategory] = useState<RecipeCategory>(recipe?.category ?? '한식');
-  const [servings, setServings] = useState(recipe?.baseServings ?? settings.defaultServings);
-  const [minutes, setMinutes] = useState(recipe?.cookMinutes != null ? String(recipe.cookMinutes) : '');
+  const [servings, setServings] = useState(recipe?.baseServings ?? draft?.servings ?? settings.defaultServings);
+  const [minutes, setMinutes] = useState(recipe?.cookMinutes != null ? String(recipe.cookMinutes) : draft?.minutes != null ? String(draft.minutes) : '');
   const [difficulty, setDifficulty] = useState<RecipeDifficulty | undefined>(recipe?.difficulty);
-  const [sourceUrl, setSourceUrl] = useState(recipe?.sourceUrl ?? '');
+  const [sourceUrl, setSourceUrl] = useState(recipe?.sourceUrl ?? draft?.sourceUrl ?? '');
   const [note, setNote] = useState(recipe?.note ?? '');
   const [photo, setPhoto] = useState(recipe?.imageUri);
   const [photoIsNew, setPhotoIsNew] = useState(false);
   const [ingredients, setIngredients] = useState<IngredientDraft[]>(
     initial?.ingredients.length
       ? initial.ingredients.map((i) => ({ name: i.displayName, quantity: i.quantity != null ? String(i.quantity) : '', unit: i.unit ?? '', text: i.quantityText ?? '' }))
-      : [{ name: '', quantity: '', unit: '', text: '' }],
+      : draft?.ingredients.length
+        ? draft.ingredients.map((i) => ({ name: i.name, quantity: i.quantity != null ? String(i.quantity) : i.text ?? '', unit: i.unit ?? '', text: i.text ?? '' }))
+        : [{ name: '', quantity: '', unit: '', text: '' }],
   );
-  const [steps, setSteps] = useState(initial?.steps.length ? initial.steps.map((x) => ({ instruction: x.instruction, personalNote: x.personalNote })) : [{ instruction: '', personalNote: undefined as string | undefined }]);
+  const [steps, setSteps] = useState<{ instruction: string; personalNote?: string }[]>(
+    initial?.steps.length
+      ? initial.steps.map((x) => ({ instruction: x.instruction, personalNote: x.personalNote }))
+      : draft?.steps.length
+        ? draft.steps.map((instruction) => ({ instruction }))
+        : [{ instruction: '' }],
+  );
   const [saving, setSaving] = useState(false);
 
   const updateIngredient = (index: number, patch: Partial<IngredientDraft>) => setIngredients((list) => list.map((x, i) => (i === index ? { ...x, ...patch } : x)));
@@ -84,6 +96,7 @@ export function RecipeEditor({ initial }: { initial?: RecipeDetail }) {
     <Screen>
       <Header title={recipe ? '레시피 수정' : '레시피 등록'} />
       <ScreenScroll footer={<PrimaryButton label="레시피 저장" onPress={save} loading={saving} />}>
+        {draft ? <InfoNote>붙여넣은 글에서 정리한 초안이에요. 재료와 순서를 확인하고 고친 뒤 저장해 주세요.</InfoNote> : null}
         {photo ? <AppImage uri={photo} style={s.photo} label="레시피 사진" /> : null}
         <View style={s.row}>
           <SecondaryButton
