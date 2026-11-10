@@ -22,4 +22,6 @@ export interface InventoryInput {
   note?: string;
   localPhotoUri?: string;
   ocrText?: string;
+  /** false 면 구매일 기준 추정 기한을 만들지 않는다. 기본 true. */
+  autoEstimate?: boolean;
 }

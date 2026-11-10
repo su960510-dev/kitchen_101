@@ -14,13 +14,13 @@ npm run audit:licenses
 
 | 항목 | 결과 |
 | --- | --- |
-| Jest 8개 파일 94개 | 통과 |
+| Jest 9개 파일 101개 | 통과 |
 | TypeScript strict | 통과 |
 | ESLint | 통과 |
 | `expo-doctor` 20개 | 통과 |
 | `expo prebuild` iOS·Android (`--no-install`) | 통과 |
 | `expo export` iOS·Android Hermes 번들 | 통과 |
-| `swiftc -parse` | 통과 (구문만, 타입 검사 아님) |
+| `xcodebuild` iOS 기기 빌드 | 통과 (Swift OCR 모듈 컴파일 포함) |
 | 웹 미리보기 | 온보딩, 예시 시드, 직접 등록, 달력, 소진, 새로고침 후 유지, 복구, 설정 확인 |
 
 ## 플랫폼별 검증
@@ -28,7 +28,7 @@ npm run audit:licenses
 | 환경 | 상태 |
 | --- | --- |
 | iOS 시뮬레이터 | **미검증** (Xcode 라이선스 미동의로 실행 불가) |
-| iOS 실기기 | **미검증** |
+| iOS 실기기 | iPhone XS(iOS 18.7.11), 무료 개인 팀 서명 Release 빌드 설치·실행 확인 (2026-11-10). 기능별 확인은 사용자 테스트 대기 |
 | Android 에뮬레이터 | **미검증** |
 | Android 실기기 | **미검증** (연결된 기기 없음) |
 
@@ -36,7 +36,7 @@ npm run audit:licenses
 
 ## 아직 실행하지 않은 것
 
-- Swift 모듈 컴파일과 Vision OCR
+- Vision OCR 실제 인식
 - 실제 알림 예약·전달, 권한 거부 흐름
 - 카메라·사진 선택기
 - JSON 내보내기·복원 UI (서비스 로직은 통합 테스트 통과)

@@ -13,10 +13,12 @@ export function statusMessage(status: InventoryStatus, labelType?: DateType): st
   const label = labelType ? DATE_TYPE_LABELS[labelType] : '표시 날짜';
   switch (status) {
     case 'EXPIRED_LABEL_DATE':
+      if (labelType === 'ESTIMATED_FROM_PURCHASE') return '구매일 기준 추정 기한이 지났어요. 식품 상태와 보관 조건을 직접 확인하세요.';
       return `표시된 ${josaIGa(label)} 지났어요. 제품 표시와 보관 지침을 확인하세요.`;
     case 'LABEL_DATE_TODAY':
       return '오늘 표시 날짜예요. 포장 상태와 보관 조건을 확인하세요.';
     case 'LABEL_DATE_SOON':
+      if (labelType === 'ESTIMATED_FROM_PURCHASE') return '구매일 기준 추정 기한이 다가와요. 식품 상태를 확인하세요.';
       return `표시된 ${josaIGa(label)} 다가와요. 제품 표시와 보관 조건을 확인하세요.`;
     case 'PERSONAL_REMINDER_DUE':
       return '내가 설정한 관리 알림 날짜가 다가와요.';
@@ -36,6 +38,7 @@ export const SAFETY_COPY = {
   momSideDishNote: '엄마표는 출처 표시예요. 신선도나 안전을 보증하지 않아요. 알림 날짜는 직접 정해 주세요.',
   fridgePickNote: '추천은 등록된 재료와 내 레시피를 비교한 결과예요. 실제 섭취 안전을 보장하지 않아요.',
   sampleNote: '예시 데이터예요. 표시된 날짜는 화면 설명용이며 실제 식품 날짜가 아니에요.',
+  estimateNote: '추정 보관 기한은 구매일과 품목별 일반 보관 기간으로 계산한 참고 날짜예요. 포장에 날짜가 있으면 그 날짜를 따르고, 실제 상태를 꼭 확인하세요.',
   allergyNote: '알레르기 안전을 보증하지 않아요. 포장 표시를 꼭 확인해 주세요.',
 } as const;
 

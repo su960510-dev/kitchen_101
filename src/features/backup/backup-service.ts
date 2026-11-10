@@ -43,7 +43,7 @@ export async function restoreBackup(db: SqlDb, backup: BackupV1): Promise<{ item
   await db.withTransactionAsync(async () => {
     await db.execAsync('DELETE FROM inventory_items; DELETE FROM recipes;');
     for (const item of backup.items) {
-      await inventoryRepository.upsert(db, { ...item, isSample: false, dateSource: item.labelDate ? 'IMPORTED_BACKUP' : undefined });
+      await inventoryRepository.upsert(db, { ...item, isSample: false, dateSource: item.labelDate ? (item.dateSource === 'AUTO_ESTIMATE' ? 'AUTO_ESTIMATE' : 'IMPORTED_BACKUP') : undefined });
     }
     for (const recipe of backup.recipes) {
       await recipeRepository.upsertRecipe(db, { ...recipe, isSample: false });

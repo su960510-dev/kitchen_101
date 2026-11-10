@@ -4,18 +4,31 @@ import { groupOfCategory, type FoodInventoryItem, type InventoryCategory, type I
 import { newId, optionalDate, optionalQuantity, requireName } from '@/domain/validation';
 import { normalizeIngredient } from '@/features/fridge-matching/ingredient-normalizer';
 import { computeStatus, isAttentionStatus } from '@/features/food-safety/status-calculator';
+import { estimateFromPurchase } from '@/features/food-safety/storage-estimate';
+import type { StorageGuidance } from '@/features/food-safety/reference-guidance';
 import { inventoryRepository } from '@/infrastructure/database/repositories/inventory-repository';
 import type { SqlDb } from '@/infrastructure/database/sql-types';
 
 import type { InventoryInput } from './types';
 
-export function buildItem(input: InventoryInput, existing: FoodInventoryItem | null, now = new Date()): FoodInventoryItem {
+export function buildItem(input: InventoryInput, existing: FoodInventoryItem | null, now = new Date(), guidance?: StorageGuidance[]): FoodInventoryItem {
   const name = requireName(input.name, '이름');
-  const labelDate = optionalDate(input.labelDate);
+  let labelDate = optionalDate(input.labelDate);
+  let labelDateType = input.labelDateType;
+  let dateSource = input.dateSource;
+  // 포장 날짜가 없을 때만 구매일 기준 추정 기한을 채운다(D-17). 엄마표 반찬은 대상이 아니다.
+  if (!labelDate && input.autoEstimate !== false && !input.isMomSideDish) {
+    const estimate = estimateFromPurchase({ name, storageLocation: input.storageLocation, purchaseDate: optionalDate(input.purchaseDate) }, guidance);
+    if (estimate) {
+      labelDate = estimate.date;
+      labelDateType = 'ESTIMATED_FROM_PURCHASE';
+      dateSource = 'AUTO_ESTIMATE';
+    }
+  }
   const isMom = input.isMomSideDish ?? false;
   const receivedDate = optionalDate(input.receivedDate);
   if (isMom && !receivedDate) throw new AppError('validation', '엄마표 반찬은 받은 날짜가 필요해요.');
-  if (labelDate && !input.labelDateType) throw new AppError('validation', '날짜 종류를 선택해 주세요.');
+  if (labelDate && !labelDateType) throw new AppError('validation', '날짜 종류를 선택해 주세요.');
   const iso = now.toISOString();
   return {
     id: input.id ?? existing?.id ?? newId('inv_'),
@@ -30,9 +43,9 @@ export function buildItem(input: InventoryInput, existing: FoodInventoryItem | n
     openedDate: optionalDate(input.openedDate),
     cookedDate: optionalDate(input.cookedDate),
     labelDate,
-    labelDateType: labelDate ? input.labelDateType : undefined,
+    labelDateType: labelDate ? labelDateType : undefined,
     personalReminderDate: optionalDate(input.personalReminderDate),
-    dateSource: input.dateSource ?? (labelDate ? existing?.dateSource ?? 'MANUAL' : undefined),
+    dateSource: labelDate ? dateSource ?? existing?.dateSource ?? 'MANUAL' : undefined,
     notifyEnabled: input.notifyEnabled ?? false,
     isMomSideDish: isMom,
     isOpened: input.isOpened ?? false,
@@ -146,6 +159,7 @@ function dueRank(item: FoodInventoryItem, today: string, leadDays: number): numb
 export interface HomeSummary {
   total: number;
   counts: Record<InventoryGroup, number>;
+  storageCounts: Record<StorageLocation, number>;
   attention: FoodInventoryItem[];
   mom: FoodInventoryItem[];
   noDate: FoodInventoryItem[];
@@ -155,10 +169,13 @@ export interface HomeSummary {
 export function summarize(items: FoodInventoryItem[], leadDays: number, today = todayKst()): HomeSummary {
   const counts: Record<InventoryGroup, number> = { FRESH: 0, SIDE: 0, PROCESSED: 0 };
   items.forEach((i) => counts[groupOfCategory(i.category)]++);
+  const storageCounts: Record<StorageLocation, number> = { FRIDGE: 0, FREEZER: 0, PANTRY: 0, OTHER: 0 };
+  items.forEach((i) => storageCounts[i.storageLocation]++);
   const sorted = filterAndSort([...items], {}, today, leadDays);
   return {
     total: items.length,
     counts,
+    storageCounts,
     attention: sorted.filter((i) => isAttentionStatus(computeStatus(i, today, leadDays).primary)),
     mom: sorted.filter((i) => i.isMomSideDish),
     noDate: sorted.filter((i) => computeStatus(i, today, leadDays).primary === 'NO_DATE'),

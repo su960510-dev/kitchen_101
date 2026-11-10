@@ -176,6 +176,7 @@ describe('sample data', () => {
     const summary = summarize(items, 7, '2026-11-03');
     expect(summary.total).toBe(12);
     expect(summary.counts).toEqual({ FRESH: 7, SIDE: 3, PROCESSED: 2 });
+    expect(summary.storageCounts).toEqual({ FRIDGE: 9, FREEZER: 1, PANTRY: 2, OTHER: 0 });
     expect(items.every((i) => i.isSample)).toBe(true);
     expect(filterAndSort(items, {}, '2026-11-03', 7).slice(0, 4).map((i) => i.name)).toEqual(['토마토', '상추', '계란', '김치']);
     expect(summary.attention.map((i) => i.name)).toEqual(['토마토', '상추', '멸치볶음']);

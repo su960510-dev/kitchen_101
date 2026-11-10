@@ -7,8 +7,8 @@ export type InventoryCategory =
 export type DateType =
   | 'USE_BY' | 'SELL_BY' | 'BEST_BEFORE' | 'MANUFACTURED_ON'
   | 'PACKED_ON' | 'PURCHASED_ON' | 'RECEIVED_ON' | 'OPENED_ON'
-  | 'COOKED_ON' | 'PERSONAL_REMINDER' | 'UNKNOWN';
-export type DateSource = 'MANUAL' | 'OCR_CONFIRMED' | 'IMPORTED_BACKUP';
+  | 'COOKED_ON' | 'PERSONAL_REMINDER' | 'ESTIMATED_FROM_PURCHASE' | 'UNKNOWN';
+export type DateSource = 'MANUAL' | 'OCR_CONFIRMED' | 'IMPORTED_BACKUP' | 'AUTO_ESTIMATE';
 export type InventoryStatus =
   | 'EXPIRED_LABEL_DATE' | 'LABEL_DATE_TODAY' | 'LABEL_DATE_SOON'
   | 'PERSONAL_REMINDER_DUE' | 'NO_DATE' | 'DATE_UNCONFIRMED'

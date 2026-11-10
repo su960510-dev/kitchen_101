@@ -77,6 +77,6 @@ public final class FoodLabelOcrModule: Module {
   }
 }
 
-final class FoodLabelOcrImageException: Exception {
+final class FoodLabelOcrImageException: Exception, @unchecked Sendable {
   override var reason: String { "이미지를 읽을 수 없습니다." }
 }

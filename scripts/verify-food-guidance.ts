@@ -2,12 +2,15 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import { REFERENCE_GUIDANCE } from '../src/features/food-safety/reference-guidance.ts';
+import { STORAGE_GUIDANCE } from '../src/features/food-safety/reference-guidance.ts';
 
 const problems: string[] = [];
 
-for (const g of REFERENCE_GUIDANCE) {
-  if (!g.sourceUrl || !g.lastVerifiedOn || !g.storageCondition) problems.push(`출처·조건 누락: ${g.foodType}`);
+for (const g of STORAGE_GUIDANCE) {
+  if (!g.sourceUrl || !g.sourceItem || !/^\d{4}-\d{2}-\d{2}$/.test(g.lastVerifiedOn)) problems.push(`출처 누락: ${g.id}`);
+  for (const [storage, days] of Object.entries(g.days)) {
+    if (!Number.isInteger(days) || days < 0 || days > 730) problems.push(`기간 이상: ${g.id} ${storage}=${days}`);
+  }
 }
 
 // 사용자에게 보이는 코드에 만료 단정·안전 보증 문구가 들어가지 않게 한다.
@@ -34,4 +37,4 @@ if (problems.length) {
   console.error(problems.join('\n'));
   process.exit(1);
 }
-console.log(`OK: 참고 데이터 ${REFERENCE_GUIDANCE.length}건, 금지 문구 없음`);
+console.log(`OK: 품목 보관 기간 ${STORAGE_GUIDANCE.length}건, 금지 문구 없음`);

@@ -16,13 +16,17 @@
 | 개인 알림일 경과 재료는 검토 필요로 표시 | `recipe-matcher.ts` | 동일 |
 | 알림 문구 구분, OCR 원문 미포함 | `notification-reconciler.ts` | `notification-reconciler.test.ts` |
 
+## 구매일 기준 추정 보관 기한 (2026-11-10, 사용자 결정)
+
+프롬프트 §2.3의 금지를 사용자가 명시적으로 바꿨다(`DECISIONS.md` D-17). 포장 날짜가 없고 구매일이 있으며, 출처가 확인된 품목 데이터가 있을 때만 `추정 보관 기한`을 만든다. 계산은 `food-safety/storage-estimate.ts` 한 곳에 있고 테스트는 `storage-estimate.test.ts`다. 현재 데이터는 0건이다.
+
 ## 금지 사항
 
-`구입일 + N일`, `반찬 = N일`, `냉동 시 연장` 계산은 코드 어디에도 없다. `scripts/verify-food-guidance.ts`가 `만료`, 안전 단정 문구, 출처 없는 참고 데이터를 검사한다.
+`반찬 = N일`, `냉동 시 연장` 같은 일괄 계산과 출처 없는 기간 값은 코드 어디에도 없다. `scripts/verify-food-guidance.ts`가 `만료`, 안전 단정 문구, 출처 없는 참고 데이터를 검사한다.
 
-## 참고 알림 기간
+## 품목 보관 기간 데이터
 
-검수된 데이터가 없어 `REFERENCE_GUIDANCE`는 비어 있다. 앱은 `날짜 직접 설정`만 안내한다. 추가하려면 공신력 있는 출처, 식품 유형, 보관 온도, 개봉·조리 조건, 마지막 확인일이 모두 있어야 한다.
+`STORAGE_GUIDANCE`는 비어 있다. 값을 추가하려면 출처 URL, 출처의 품목명, 확인일이 필요하고 `npm run verify:food-guidance`가 이를 검사한다. 데이터가 없는 품목은 `날짜를 직접 정해 주세요`라고 안내한다.
 
 ## UI
 

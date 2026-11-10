@@ -1,5 +1,5 @@
 import { addDays, todayKst } from '@/domain/date-only';
-import type { DateType, FoodInventoryItem, InventoryCategory, RecipeCategory, RecipeDifficulty } from '@/domain/models';
+import type { DateType, FoodInventoryItem, InventoryCategory, RecipeCategory, RecipeDifficulty, StorageLocation } from '@/domain/models';
 import { newId } from '@/domain/validation';
 import { normalizeIngredient } from '@/features/fridge-matching/ingredient-normalizer';
 import { inventoryRepository } from '@/infrastructure/database/repositories/inventory-repository';
@@ -19,6 +19,7 @@ interface SampleItem {
   reminderDays?: number;
   asset?: string;
   mom?: boolean;
+  storage?: StorageLocation;
   receivedDaysAgo?: number;
   quantity?: number;
   unit?: string;
@@ -30,13 +31,13 @@ const ITEMS: SampleItem[] = [
   { name: '계란', category: 'DAIRY', days: 9, type: 'USE_BY', asset: 'eggs', quantity: 10, unit: '개' },
   { name: '대파', category: 'VEGETABLE' },
   { name: '양파', category: 'VEGETABLE' },
-  { name: '돼지고기', category: 'MEAT', days: 20, type: 'USE_BY' },
+  { name: '돼지고기', category: 'MEAT', days: 20, type: 'USE_BY', storage: 'FREEZER' },
   { name: '두부', category: 'GRAIN', days: 16, type: 'USE_BY' },
   { name: '김치', category: 'SIDE_DISH', days: 14, type: 'USE_BY', asset: 'kimchi' },
   { name: '멸치볶음', category: 'SIDE_DISH', reminderDays: 5, mom: true, receivedDaysAgo: 2 },
   { name: '콩자반', category: 'SIDE_DISH', mom: true, receivedDaysAgo: 2 },
-  { name: '참기름', category: 'SAUCE' },
-  { name: '즉석밥', category: 'PACKAGED', days: 90, type: 'BEST_BEFORE', quantity: 2, unit: '개' },
+  { name: '참기름', category: 'SAUCE', storage: 'PANTRY' },
+  { name: '즉석밥', category: 'PACKAGED', days: 90, type: 'BEST_BEFORE', quantity: 2, unit: '개', storage: 'PANTRY' },
 ];
 
 interface SampleRecipe {
@@ -155,7 +156,7 @@ export async function seedSampleData(db: SqlDb, now = new Date()): Promise<void>
         name: s.name,
         normalizedIngredientId: normalizeIngredient(s.name),
         category: s.category,
-        storageLocation: 'FRIDGE',
+        storageLocation: s.storage ?? 'FRIDGE',
         quantity: s.quantity,
         unit: s.unit,
         labelDate: s.days != null ? addDays(today, s.days) : undefined,

@@ -9,3 +9,5 @@
 | [식품안전정보원](https://www.foodinfo.or.kr/) | 미확인 | 링크만 제공 |
 
 위 Q&A에 따라 냉장 우유 등 `유통기한` 표시 제품이 계속 존재하므로, 앱은 `유통기한`을 소비기한으로 바꾸지 않고 그대로 보존한다.
+
+| [USDA FSIS FoodKeeper Data (data.gov)](https://catalog.data.gov/dataset/fsis-foodkeeper-data) | 2026-11-10 | CC0 1.0 공개 도메인, 최종 갱신 2025-01-22. 데이터 파일(fsis.usda.gov)은 자동 접근이 403으로 차단되어 값을 확인하지 못함. 사용자가 브라우저로 받은 파일로 채울 예정 |

@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   AlertBanner,
   Card,
-  GroupIcon,
+  Icon,
   IconButton,
   InventoryRow,
   LogoMark,
@@ -31,6 +31,12 @@ import { useLoader } from '@/hooks/use-loader';
 import { confirmAction } from '@/utils/dialogs';
 
 type AddChoice = 'scan' | 'manual' | 'mom';
+
+const STORAGE_CARDS = [
+  { key: 'FRIDGE', label: '냉장', icon: 'snow', tint: '#7FB8E0' },
+  { key: 'FREEZER', label: '냉동', icon: 'fridge-door', tint: '#8E9CD8' },
+  { key: 'PANTRY', label: '상온', icon: 'pantry', tint: '#E9A75A' },
+] as const;
 const ADD_OPTIONS: SheetOption<AddChoice>[] = [
   { value: 'scan', label: '포장 라벨로 등록', hint: '촬영하거나 앨범에서 선택해요. 날짜는 직접 확인해요.', icon: 'scan' },
   { value: 'manual', label: '직접 입력', icon: 'note' },
@@ -87,17 +93,13 @@ export default function HomeScreen() {
 
         <SectionHeader title="냉장고 현황" trailing={`전체 ${summary?.total ?? 0}개`} />
         <View style={s.groupRow}>
-          {(
-            [
-              ['FRESH', '신선식품'],
-              ['SIDE', '반찬'],
-              ['PROCESSED', '가공식품'],
-            ] as const
-          ).map(([group, label]) => (
-            <Pressable key={group} onPress={() => openInventory({ group })} accessibilityRole="button" accessibilityLabel={`${label} ${summary?.counts[group] ?? 0}개`} style={({ pressed }) => [s.groupCard, pressed && { opacity: 0.7 }]}>
-              <GroupIcon group={group} />
-              <Text style={[s.groupLabel, group === 'FRESH' && s.groupLabelActive]}>{label}</Text>
-              <Text style={s.groupCount}>{summary?.counts[group] ?? 0}개</Text>
+          {STORAGE_CARDS.map(({ key, label, icon, tint }) => (
+            <Pressable key={key} onPress={() => openInventory({ storage: key })} accessibilityRole="button" accessibilityLabel={`${label} ${summary?.storageCounts[key] ?? 0}개`} style={({ pressed }) => [s.groupCard, pressed && { opacity: 0.7 }]}>
+              <View style={[s.storageIcon, { backgroundColor: tint }]}>
+                <Icon name={icon} size={22} color="#fff" strokeWidth={2.2} />
+              </View>
+              <Text style={s.groupLabel}>{label}</Text>
+              <Text style={s.groupCount}>{summary?.storageCounts[key] ?? 0}개</Text>
             </Pressable>
           ))}
         </View>
@@ -171,7 +173,7 @@ const styles = (c: Colors) =>
     groupRow: { flexDirection: 'row', gap: 10 },
     groupCard: { flex: 1, alignItems: 'center', gap: 6, backgroundColor: c.surface, borderRadius: 20, paddingVertical: 16, ...softShadow },
     groupLabel: { color: c.sub, fontSize: 15, fontWeight: '500' },
-    groupLabelActive: { color: c.greenDark },
+    storageIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     groupCount: { color: c.ink, fontSize: 18, fontWeight: '700' },
     emptyCard: { padding: spacing.xl },
     emptyText: { color: c.sub, fontSize: 14, lineHeight: 20 },

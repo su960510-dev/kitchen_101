@@ -72,6 +72,7 @@
           "microphonePermission": false
         }
       ],
+      "./plugins/with-local-notifications-only",
       [
         "expo-notifications",
         {

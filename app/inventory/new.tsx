@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppImage, CalendarSheet, Chip, DateRow, FieldLabel, Header, ILLUSTRATIONS, IconButton, Icon, InfoNote, OptionSheet, PrimaryButton, SampleBadge, Screen, ScreenScroll, TextField, ToggleRow, spacing, useColors, useStyles, type Colors, type IconName } from '@/design-system';
-import { isDateOnly, todayKst, type DateOnly } from '@/domain/date-only';
+import { formatFull, isDateOnly, todayKst, type DateOnly } from '@/domain/date-only';
 import { userMessageOf } from '@/domain/errors';
 import { CATEGORY_LABELS, type DateSource, type DateType, type InventoryCategory, type StorageLocation } from '@/domain/models';
 import { DATE_TYPE_LABELS, SELECTABLE_LABEL_TYPES } from '@/features/food-safety/date-policy';
 import { SAFETY_COPY } from '@/features/food-safety/safety-copy';
+import { estimateFromPurchase } from '@/features/food-safety/storage-estimate';
 import { saveItem } from '@/features/inventory/inventory-service';
 import { pickFromAlbum, takePhoto } from '@/features/inventory/photo-picker';
 import { requestPermission } from '@/infrastructure/notifications/local-notifications';
@@ -70,7 +71,6 @@ export default function InventoryFormScreen() {
   const [more, setMore] = useState(isMomInitial || editing);
   const [picker, setPicker] = useState<DateField | null>(null);
   const [typeOpen, setTypeOpen] = useState(false);
-  const [categoryOpen, setCategoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -80,9 +80,11 @@ export default function InventoryFormScreen() {
       setName(item.name);
       setCategory(item.category);
       setStorage(item.storageLocation);
-      setLabelDate(item.labelDate);
-      if (item.labelDateType) setLabelType(item.labelDateType);
-      setDateSource(item.dateSource);
+      // 추정 기한은 저장할 때 다시 계산하므로 포장 날짜 칸에 넣지 않는다.
+      const estimated = item.dateSource === 'AUTO_ESTIMATE';
+      setLabelDate(estimated ? undefined : item.labelDate);
+      if (item.labelDateType && !estimated) setLabelType(item.labelDateType);
+      setDateSource(estimated ? undefined : item.dateSource);
       setReminder(item.personalReminderDate);
       setPurchase(item.purchaseDate);
       setReceived(item.receivedDate);
@@ -113,11 +115,13 @@ export default function InventoryFormScreen() {
     }
     if (field === 'cooked') setCooked(value);
   };
+  const estimate = !isMom && !labelDate ? estimateFromPurchase({ name: name.trim(), storageLocation: storage, purchaseDate: purchase }) : null;
+  const purchaseHint = isMom || labelDate || !purchase ? undefined : estimate ? `추정 보관 기한 ${formatFull(estimate.date)} · ${estimate.days}일 (${estimate.sourceName})` : '이 품목은 자동 기간 정보가 없어요. 날짜를 직접 정해 주세요.';
   const dateValue: Record<DateField, DateOnly | undefined> = { label: labelDate, reminder, purchase, received, opened, cooked };
   const dateTitle: Record<DateField, string> = {
     label: DATE_TYPE_LABELS[labelType],
     reminder: '내 관리 알림 날짜',
-    purchase: '구입일',
+    purchase: '구매일',
     received: '받은 날짜',
     opened: '개봉일',
     cooked: '조리일',
@@ -214,7 +218,14 @@ export default function InventoryFormScreen() {
 
         <View style={{ height: 16 }} />
         <TextField value={name} onChangeText={setName} placeholder={isMom ? '음식 이름 (예: 멸치볶음)' : '식재료 이름'} label="이름" />
-        <View style={{ height: 12 }} />
+
+        <FieldLabel>카테고리</FieldLabel>
+        <View style={s.chips}>
+          {(Object.keys(CATEGORY_LABELS) as InventoryCategory[]).map((k) => (
+            <Chip key={k} label={CATEGORY_LABELS[k]} selected={category === k} onPress={() => setCategory(k)} />
+          ))}
+        </View>
+        <View style={{ height: 16 }} />
 
         {isMom ? (
           <DateRow label="받은 날짜" value={received} onPress={() => setPicker('received')} />
@@ -225,6 +236,9 @@ export default function InventoryFormScreen() {
               <Text style={s.inlineText}>포장에 적힌 날짜 종류 바꾸기</Text>
               <Icon name="chevron" size={14} color={c.sub} />
             </Pressable>
+            <View style={{ height: 8 }} />
+            <DateRow label="구매일" value={purchase} placeholder="미입력" onPress={() => setPicker('purchase')} hint={purchaseHint} />
+            {estimate ? <InfoNote>{SAFETY_COPY.estimateNote}</InfoNote> : null}
           </>
         )}
 
@@ -241,9 +255,6 @@ export default function InventoryFormScreen() {
 
         {more ? (
           <>
-            <FieldLabel>분류</FieldLabel>
-            <Chip label={CATEGORY_LABELS[category]} selected onPress={() => setCategoryOpen(true)} />
-
             <FieldLabel>수량 (선택)</FieldLabel>
             <View style={s.qtyRow}>
               <TextField value={quantity} onChangeText={setQuantity} placeholder="수량" keyboardType="decimal-pad" style={{ flex: 1 }} />
@@ -256,7 +267,6 @@ export default function InventoryFormScreen() {
             <ToggleRow label="날짜 알림 받기" hint="표시 날짜와 내 관리 알림을 각각 알려요." value={notifyEnabled} onChange={setNotifyEnabled} />
 
             <FieldLabel>기록 (선택)</FieldLabel>
-            {!isMom ? <DateRow label="구입일" value={purchase} placeholder="미입력" onPress={() => setPicker('purchase')} /> : null}
             {isMom ? null : <DateRow label="받은 날짜" value={received} placeholder="미입력" onPress={() => setPicker('received')} />}
             <DateRow label="조리일" value={cooked} placeholder="미입력" onPress={() => setPicker('cooked')} />
             <ToggleRow label="개봉했어요" value={isOpened} onChange={setIsOpened} />
@@ -281,7 +291,6 @@ export default function InventoryFormScreen() {
         onClear={picker && dateValue[picker] ? () => setDate(picker, undefined) : undefined}
       />
       <OptionSheet visible={typeOpen} onClose={() => setTypeOpen(false)} title="포장에 적힌 날짜 종류" value={labelType} options={SELECTABLE_LABEL_TYPES.map((t) => ({ value: t, label: DATE_TYPE_LABELS[t] }))} onSelect={setLabelType} />
-      <OptionSheet visible={categoryOpen} onClose={() => setCategoryOpen(false)} title="분류" value={category} options={(Object.keys(CATEGORY_LABELS) as InventoryCategory[]).map((k) => ({ value: k, label: CATEGORY_LABELS[k] }))} onSelect={setCategory} />
     </Screen>
   );
 }

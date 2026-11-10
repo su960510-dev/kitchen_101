@@ -90,13 +90,13 @@ export default function InventoryDetailScreen() {
         {finished ? <InfoNote>{item.discardedAt ? '폐기로 기록된 항목이에요.' : '소진으로 기록된 항목이에요.'}</InfoNote> : null}
 
         <Card style={s.card}>
-          <Text style={s.cardTitle}>포장 표시 날짜</Text>
+          <Text style={s.cardTitle}>{item.dateSource === 'AUTO_ESTIMATE' ? '추정 보관 기한' : '포장 표시 날짜'}</Text>
           {item.labelDate && item.labelDateType ? (
             <>
               <Text style={s.dateValue}>{formatFull(item.labelDate)}</Text>
               <Text style={s.meta}>
                 {DATE_TYPE_LABELS[item.labelDateType]}
-                {item.dateSource === 'OCR_CONFIRMED' ? ' · 라벨 인식 후 직접 확인' : item.dateSource === 'IMPORTED_BACKUP' ? ' · 백업에서 복원' : ' · 직접 입력'}
+                {item.dateSource === 'AUTO_ESTIMATE' ? ' · 구매일 기준 자동 계산' : item.dateSource === 'OCR_CONFIRMED' ? ' · 라벨 인식 후 직접 확인' : item.dateSource === 'IMPORTED_BACKUP' ? ' · 백업에서 복원' : ' · 직접 입력'}
               </Text>
               {!isLabelDeadline(item.labelDateType) ? <Text style={s.meta}>이 날짜는 기한이 아니에요. 임박 계산에 쓰지 않아요.</Text> : null}
             </>
@@ -119,6 +119,7 @@ export default function InventoryDetailScreen() {
                 {statusMessage(x, item.labelDateType)}
               </InfoNote>
             ))}
+          {item.dateSource === 'AUTO_ESTIMATE' ? <InfoNote>{SAFETY_COPY.estimateNote}</InfoNote> : null}
           <InfoNote>{SAFETY_COPY.appCannotInspect}</InfoNote>
         </View>
 

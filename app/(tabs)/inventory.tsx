@@ -38,7 +38,7 @@ export default function InventoryScreen() {
   const s = useStyles(styles);
   const insets = useSafeAreaInsets();
   const { settings } = useAppState();
-  const params = useLocalSearchParams<{ group?: InventoryGroup; attention?: string; mom?: string }>();
+  const params = useLocalSearchParams<{ group?: InventoryGroup; attention?: string; mom?: string; storage?: StorageLocation }>();
   const today = todayKst();
   const lead = settings.reminderLeadDays;
 
@@ -54,13 +54,14 @@ export default function InventoryScreen() {
   const [sort, setSort] = useState<InventorySort>('DUE');
 
   // 홈에서 다른 조건으로 들어오면 그 조건을 적용한다.
-  const paramsKey = `${params.group}|${params.attention}|${params.mom}`;
+  const paramsKey = `${params.group}|${params.attention}|${params.mom}|${params.storage}`;
   const [appliedKey, setAppliedKey] = useState('');
   if (appliedKey !== paramsKey) {
     setAppliedKey(paramsKey);
     setTab(params.group ?? 'ALL');
     setAttentionOnly(params.attention === '1');
     setMomOnly(params.mom === '1');
+    setStorage(params.storage);
   }
 
   const { data: items = [] } = useLoader(() => inventoryRepository.listActive(db), []);
