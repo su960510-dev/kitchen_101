@@ -1,5 +1,6 @@
 import { extractBodyText, extractJsonLdRecipe, htmlToText } from '@/features/recipes/link-import/html-extract';
-import { isUnsupportedHost, parsePage, readableUrl } from '@/features/recipes/link-import/link-recipe-importer';
+import { isCaptionOnlyHost, isUnsupportedHost, parsePage, readableUrl } from '@/features/recipes/link-import/link-recipe-importer';
+import { previewCaption } from '@/features/recipes/link-import/html-extract';
 import { pickYoutubeRecipe, toYoutubeSources, youtubeVideoId } from '@/features/recipes/link-import/youtube';
 
 // 모든 HTML·JSON 은 테스트용으로 직접 만든 합성 데이터다.
@@ -72,10 +73,11 @@ describe('html extraction', () => {
 
 describe('unsupported hosts', () => {
   it('recognizes SNS that need login', () => {
-    expect(isUnsupportedHost('https://www.instagram.com/p/abc/')).toBe(true);
-    expect(isUnsupportedHost('https://instagr.am/p/abc')).toBe(true);
+    expect(isUnsupportedHost('https://www.tiktok.com/@a/video/1')).toBe(true);
+    expect(isUnsupportedHost('https://www.instagram.com/p/abc/')).toBe(false);
+    expect(isCaptionOnlyHost('https://www.instagram.com/reel/abc/')).toBe(true);
     expect(isUnsupportedHost('https://blog.naver.com/a/1')).toBe(false);
-    expect(isUnsupportedHost('https://notinstagram.com/a')).toBe(false);
+    expect(isCaptionOnlyHost('https://notinstagram.com/a')).toBe(false);
   });
 });
 
@@ -112,3 +114,25 @@ describe('youtube', () => {
     expect(pickYoutubeRecipe(toYoutubeSources(video, { items: [threads.items[0]] }))).toBeNull();
   });
 });
+
+describe('instagram caption', () => {
+  // 합성 예시: 로그인 화면 HTML 안에 미리보기용 캡션만 들어 있다.
+  const page = `<html><head><meta property="og:description" content="좋아요 120개, 댓글 8개 - cook님: &quot;간단 볶음밥&#10;&#10;재료 (1인분)&#10;밥 1공기&#10;계란 1개&#10;&#10;만드는 법&#10;1. 계란을 볶아요.&#10;2. 밥을 넣어요.&quot;"></head>
+<body><form id="loginForm">로그인 전화번호 비밀번호</form></body></html>`;
+
+  it('strips the like/comment prefix', () => {
+    expect(previewCaption(page)?.startsWith('간단 볶음밥')).toBe(true);
+  });
+
+  it('uses only the caption and never the login form', () => {
+    const r = parsePage(page, true)!;
+    expect(r.source).toBe('게시물 캡션');
+    expect(r.parsed.ingredients.map((i) => i.name)).toEqual(['밥', '계란']);
+    expect(r.parsed.steps).toEqual(['계란을 볶아요.', '밥을 넣어요.']);
+  });
+
+  it('returns null when the caption has no ingredients', () => {
+    expect(parsePage('<meta property="og:description" content="오늘 날씨 좋다">', true)).toBeNull();
+  });
+});
+

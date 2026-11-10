@@ -139,3 +139,17 @@ export function pageTitle(html: string): string | undefined {
 export function richness(parsed: ParsedRecipeText | null): number {
   return parsed ? parsed.ingredients.length * 2 + parsed.steps.length : 0;
 }
+
+/**
+ * 링크 미리보기용으로 사이트가 공개하는 설명(og:description). 인스타그램은 여기에 게시물 캡션 전체를 담는다.
+ * `좋아요 12개, 댓글 3개 - user님: "..."` 같은 앞부분은 떼어 낸다.
+ */
+export function previewCaption(html: string): string | undefined {
+  const m = /<meta[^>]+(?:property|name)=["']og:description["'][^>]+content="([^"]*)"/i.exec(html) ?? /<meta[^>]+content="([^"]*)"[^>]+(?:property|name)=["']og:description["']/i.exec(html);
+  if (!m) return undefined;
+  let text = decodeEntities(m[1]).trim();
+  const quoted = /^[^\n]{0,120}?[:：]\s*["“](.*)["”]\s*$/s.exec(text);
+  if (quoted) text = quoted[1];
+  return text || undefined;
+}
+

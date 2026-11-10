@@ -14,7 +14,7 @@ npm run audit:licenses
 
 | 항목 | 결과 |
 | --- | --- |
-| Jest 11개 파일 126개 | 통과 |
+| Jest 11개 파일 134개 | 통과 |
 | TypeScript strict | 통과 |
 | ESLint | 통과 |
 | `expo-doctor` 20개 | 통과 |

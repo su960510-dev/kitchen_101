@@ -4,10 +4,10 @@ import type { ParsedRecipeText } from '../recipe-text-parser';
 import { normalizeRecipeUrl } from '../recipe-source-links';
 import { parseRecipeText } from '../recipe-text-parser';
 
-import { extractBodyText, extractJsonLdRecipe, pageTitle, richness } from './html-extract';
+import { extractBodyText, extractJsonLdRecipe, pageTitle, previewCaption, richness } from './html-extract';
 import { pickYoutubeRecipe, toYoutubeSources, youtubeVideoId } from './youtube';
 
-export type ImportSource = '레시피 구조 데이터' | '본문' | '설명란' | '작성자 댓글' | '인기 댓글';
+export type ImportSource = '레시피 구조 데이터' | '본문' | '게시물 캡션' | '설명란' | '작성자 댓글' | '인기 댓글';
 
 export interface LinkImportResult {
   url: string;
@@ -51,15 +51,24 @@ async function fetchText(url: string): Promise<string> {
   return (await fetchPage(url)).text;
 }
 
-/** 로그인 없이는 게시물 글을 읽을 수 없고 약관도 자동 수집을 막는 곳 */
+/** 로그인 없이는 게시물 글을 읽을 수 없는 곳 */
 export function isUnsupportedHost(url: string): boolean {
-  return /(^|\.)(instagram\.com|instagr\.am|threads\.net|facebook\.com|fb\.watch|tiktok\.com)$/.test(new URL(url).hostname);
+  return /(^|\.)(threads\.net|facebook\.com|fb\.watch|tiktok\.com)$/.test(new URL(url).hostname);
 }
 
-export function parsePage(html: string): { parsed: ParsedRecipeText; source: ImportSource } | null {
+/** 인스타그램은 본문 대신 링크 미리보기용 캡션만 쓴다(로그인 화면은 읽지 않는다). */
+export function isCaptionOnlyHost(url: string): boolean {
+  return /(^|\.)(instagram\.com|instagr\.am)$/.test(new URL(url).hostname);
+}
+
+export function parsePage(html: string, captionOnly = false): { parsed: ParsedRecipeText; source: ImportSource } | null {
+  const caption = previewCaption(html);
+  const fromCaption = caption ? parseRecipeText(caption) : null;
+  if (captionOnly) return fromCaption && fromCaption.ingredients.length ? { parsed: fromCaption, source: '게시물 캡션' } : null;
   const structured = extractJsonLdRecipe(html);
   if (structured && structured.ingredients.length) return { parsed: structured, source: '레시피 구조 데이터' };
   const body = parseRecipeText(extractBodyText(html));
+  if (fromCaption && fromCaption.ingredients.length && richness(fromCaption) > richness(body)) return { parsed: fromCaption, source: '게시물 캡션' };
   if (richness(body) === 0) return structured ? { parsed: structured, source: '레시피 구조 데이터' } : null;
   // 본문 첫 줄보다 페이지 제목이 정확하다.
   body.title = pageTitle(html) ?? body.title;
@@ -88,13 +97,16 @@ export async function importRecipeFromLink(input: string, youtubeApiKey?: string
     if (!pick) throw new AppError('unknown', '설명란과 메인 댓글에서 재료를 찾지 못했어요. 레시피 글을 복사해 붙여넣어 주세요.');
     return { url, parsed: pick.parsed, source: pick.source };
   }
-  if (isUnsupportedHost(url)) throw new AppError('unknown', '인스타그램 같은 SNS는 로그인이 필요해 불러올 수 없어요. 게시물 캡션을 복사해 아래 칸에 붙여넣어 주세요.');
+  if (isUnsupportedHost(url)) throw new AppError('unknown', '이 SNS는 로그인이 필요해 불러올 수 없어요. 게시물 글을 복사해 아래 칸에 붙여넣어 주세요.');
   let fetched = await fetchPage(readableUrl(url));
   // naver.me 같은 짧은 링크는 열어 본 뒤에야 블로그 PC 주소가 나온다. PC 화면은 본문이 iframe 안에 있어 모바일로 다시 연다.
   const mobile = readableUrl(fetched.finalUrl);
   if (mobile !== fetched.finalUrl) fetched = await fetchPage(mobile);
   if (isUnsupportedHost(fetched.finalUrl)) throw new AppError('unknown', '로그인이 필요한 페이지라 불러올 수 없어요. 레시피 글을 복사해 붙여넣어 주세요.');
-  const page = parsePage(fetched.text);
-  if (!page) throw new AppError('unknown', '본문에서 재료와 순서를 찾지 못했어요. 레시피 글을 복사해 붙여넣어 주세요.');
+  const captionOnly = isCaptionOnlyHost(url) || isCaptionOnlyHost(fetched.finalUrl);
+  const page = parsePage(fetched.text, captionOnly);
+  if (!page) {
+    throw new AppError('unknown', captionOnly ? '게시물 캡션에서 재료를 찾지 못했어요. 레시피가 댓글에 있으면 그 댓글을 복사해 붙여넣어 주세요.' : '본문에서 재료와 순서를 찾지 못했어요. 레시피 글을 복사해 붙여넣어 주세요.');
+  }
   return { url, ...page };
 }

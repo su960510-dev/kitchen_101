@@ -74,3 +74,55 @@ describe('parseRecipeText', () => {
     expect(parsed.steps).toEqual([]);
   });
 });
+
+describe('SNS caption style', () => {
+  // 직접 만든 예시. 이모지 제목, 소제목, 단위 없는 양, 여러 줄 단계, 팁, 해시태그를 담았다.
+  const caption = `주말 브런치로 딱이에요 🍳✨
+오늘은 남은 재료로 만들어 봤어요!
+
+┄┄┄┄┄┄┄┄
+🧺 재료 (2인분)
+식빵 4장
+계란 2개
+우유 밥수저로 3스푼 ➜ 두유로 바꿔도 돼요
+⭐️ 버터는 무염이 좋아요
+
+🍯 소스
+메이플시럽 2, 시나몬 0.5
+설탕, 소금
+
+🍳 만드는 방법
+1️⃣ 계란과 우유를 섞어
+식빵을 충분히 적셔요
+2️⃣ 버터 두른 팬에 [중불]로
+앞뒤 3분씩 구워요
+✔️ 센 불이면 금방 타요
+3️⃣ 소스를 뿌려 마무리해요
+
+#브런치 #프렌치토스트`;
+
+  const parsed = parseRecipeText(caption);
+
+  it('reads emoji headers, servings and title', () => {
+    expect(parsed.title).toBe('주말 브런치로 딱이에요');
+    expect(parsed.servings).toBe(2);
+  });
+
+  it('collects ingredients across sub-sections and skips tips and titles', () => {
+    expect(parsed.ingredients.map((i) => i.name)).toEqual(['식빵', '계란', '우유', '메이플시럽', '시나몬', '설탕', '소금']);
+    expect(parsed.ingredients.find((i) => i.name === '우유')).toEqual({ name: '우유', quantity: 3, unit: '스푼' });
+    expect(parsed.ingredients.find((i) => i.name === '시나몬')).toEqual({ name: '시나몬', quantity: 0.5, unit: undefined });
+  });
+
+  it('joins wrapped numbered steps and attaches tips', () => {
+    expect(parsed.steps).toEqual([
+      '계란과 우유를 섞어 식빵을 충분히 적셔요',
+      '버터 두른 팬에 [중불]로 앞뒤 3분씩 구워요 (팁: 센 불이면 금방 타요)',
+      '소스를 뿌려 마무리해요',
+    ]);
+  });
+
+  it('does not treat a step starting with 재료 as a header', () => {
+    expect(parseRecipeText('만드는 법\n1. 재료를 손질해요.').steps).toEqual(['재료를 손질해요.']);
+  });
+});
