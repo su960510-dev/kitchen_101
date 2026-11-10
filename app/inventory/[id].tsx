@@ -9,7 +9,7 @@ import { CATEGORY_LABELS, STORAGE_LABELS, type FoodInventoryItem } from '@/domai
 import { DATE_TYPE_LABELS, isLabelDeadline } from '@/features/food-safety/date-policy';
 import { SAFETY_COPY, statusMessage } from '@/features/food-safety/safety-copy';
 import { computeStatus } from '@/features/food-safety/status-calculator';
-import { consumeItem, discardItem, restoreItem, saveItem } from '@/features/inventory/inventory-service';
+import { restoreItem, saveItem } from '@/features/inventory/inventory-service';
 import type { InventoryInput } from '@/features/inventory/types';
 import { deleteFile } from '@/infrastructure/file-storage/app-files';
 import { inventoryRepository } from '@/infrastructure/database/repositories/inventory-repository';
@@ -68,7 +68,20 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
     }
   };
 
+  const remove = async () => {
+    deleteFile(item.localPhotoUri);
+    await inventoryRepository.remove(db, item.id);
+    refresh();
+    if (router.canGoBack()) router.back();
+    else router.navigate('/inventory');
+  };
+
   const save = async () => {
+    // 개수를 0으로 저장하면 확인 후 품목을 삭제한다.
+    if (quantity === 0) {
+      if (await confirmAction('품목 삭제', `개수가 0이라 ${item.name}이(가) 삭제됩니다.`, '삭제')) await remove();
+      return;
+    }
     setSaving(true);
     await act(() =>
       saveItem(db, {
@@ -97,7 +110,7 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
           finished ? (
             <PrimaryButton label="다시 냉장고로 복구" onPress={() => act(() => restoreItem(db, item.id))} />
           ) : (
-            <PrimaryButton label="저장" onPress={save} loading={saving} disabled={!changed} />
+            <PrimaryButton label="저장" onPress={save} loading={saving} disabled={!changed && quantity !== 0} />
           )
         }>
         <View style={s.head}>
@@ -124,6 +137,7 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
         <TextField value={name} onChangeText={setName} placeholder="식재료 이름" label="이름" />
 
         <FieldLabel>개수</FieldLabel>
+        <Text style={s.hint}>0으로 저장하면 품목이 삭제돼요.</Text>
         <View style={s.qtyRow}>
           <Stepper label="개수" value={quantity} min={0} max={999} onChange={setQuantity} />
           <TextField value={unit} onChangeText={setUnit} placeholder="단위" label="단위" style={{ flex: 1 }} />
@@ -187,18 +201,12 @@ function DetailView({ item, reload }: { item: FoodInventoryItem; reload: () => v
         ) : null}
 
         <View style={s.actions}>
-          {!finished ? <SecondaryButton label="다 먹었어요" onPress={() => act(() => consumeItem(db, item.id))} /> : null}
-          {!finished ? <SecondaryButton label="폐기로 기록" onPress={() => act(() => discardItem(db, item.id))} /> : null}
           <SecondaryButton
             label="삭제"
             icon="trash"
             danger
             onPress={async () => {
-              if (!(await confirmAction('식재료 삭제', `${item.name}을(를) 완전히 삭제할까요?`, '삭제'))) return;
-              deleteFile(item.localPhotoUri);
-              await inventoryRepository.remove(db, item.id);
-              refresh();
-              router.back();
+              if (await confirmAction('식재료 삭제', `${item.name}을(를) 완전히 삭제할까요?`, '삭제')) await remove();
             }}
           />
         </View>
@@ -219,6 +227,7 @@ const styles = (c: Colors) =>
     notes: { marginTop: spacing.xs },
     recordRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
     recordValue: { color: c.ink, fontSize: 14, fontWeight: '500' },
+    hint: { color: c.sub, fontSize: 13, marginTop: -4, marginBottom: 8 },
     qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: spacing.lg, justifyContent: 'center' },
   });
