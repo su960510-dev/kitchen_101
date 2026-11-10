@@ -21,6 +21,7 @@ interface IngredientDraft {
   quantity: string;
   unit: string;
   text: string;
+  note?: string;
 }
 
 const DIFFICULTIES: RecipeDifficulty[] = ['하', '중', '상'];
@@ -38,14 +39,21 @@ export function RecipeEditor({ initial, draft }: { initial?: RecipeDetail; draft
   const [minutes, setMinutes] = useState(recipe?.cookMinutes != null ? String(recipe.cookMinutes) : draft?.minutes != null ? String(draft.minutes) : '');
   const [difficulty, setDifficulty] = useState<RecipeDifficulty | undefined>(recipe?.difficulty);
   const [sourceUrl, setSourceUrl] = useState(recipe?.sourceUrl ?? draft?.sourceUrl ?? '');
-  const [note, setNote] = useState(recipe?.note ?? '');
+  // 초안의 팁은 레시피 메모에 목록으로 모은다.
+  const [note, setNote] = useState(recipe?.note ?? (draft?.tips?.length ? ['팁', ...draft.tips.map((t) => `- ${t}`)].join('\n') : ''));
   const [photo, setPhoto] = useState(recipe?.imageUri);
   const [photoIsNew, setPhotoIsNew] = useState(false);
   const [ingredients, setIngredients] = useState<IngredientDraft[]>(
     initial?.ingredients.length
-      ? initial.ingredients.map((i) => ({ name: i.displayName, quantity: i.quantity != null ? String(i.quantity) : '', unit: i.unit ?? '', text: i.quantityText ?? '' }))
+      ? initial.ingredients.map((i) => ({ name: i.displayName, quantity: i.quantity != null ? String(i.quantity) : '', unit: i.unit ?? '', text: i.quantityText ?? '', note: i.note }))
       : draft?.ingredients.length
-        ? draft.ingredients.map((i) => ({ name: i.name, quantity: i.quantity != null ? String(i.quantity) : i.text ?? '', unit: i.unit ?? '', text: i.text ?? '' }))
+        ? draft.ingredients.map((i) => ({
+            name: i.name,
+            quantity: i.quantity != null ? String(i.quantity) : i.text ?? '',
+            unit: i.unit ?? '',
+            text: i.text ?? '',
+            note: [i.group === '양념' ? '양념' : undefined, i.note].filter(Boolean).join(', ') || undefined,
+          }))
         : [{ name: '', quantity: '', unit: '', text: '' }],
   );
   const [steps, setSteps] = useState<{ instruction: string; personalNote?: string }[]>(
@@ -78,7 +86,7 @@ export function RecipeEditor({ initial, draft }: { initial?: RecipeDetail; draft
         imageUri,
         ingredients: ingredients.map((i) => {
           const value = i.quantity.trim() ? Number(i.quantity) : undefined;
-          return { displayName: i.name, quantity: value != null && Number.isFinite(value) ? value : undefined, unit: i.unit, quantityText: i.text || (value == null ? i.quantity : undefined) };
+          return { displayName: i.name, quantity: value != null && Number.isFinite(value) ? value : undefined, unit: i.unit, quantityText: i.text || (value == null ? i.quantity : undefined), note: i.note };
         }),
         steps,
       });

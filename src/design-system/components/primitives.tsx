@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors, useStyles } from '../theme';
@@ -26,13 +26,14 @@ export function Screen({ children, style }: { children: ReactNode; style?: Style
 export function ScreenScroll({ children, footer, contentStyle }: { children: ReactNode; footer?: ReactNode; contentStyle?: StyleProp<ViewStyle> }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  // 키보드가 올라와도 하단 버튼이 가려지지 않게 화면을 줄이고, 쓸어내리면 키보드를 닫는다.
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[{ paddingHorizontal: spacing.xl, paddingBottom: footer ? 110 : 32 }, contentStyle]}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" style={{ flex: 1 }} contentContainerStyle={[{ paddingHorizontal: spacing.xl, paddingBottom: 32 }, contentStyle]}>
         {children}
       </ScrollView>
-      {footer ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: Math.max(insets.bottom, 16), backgroundColor: c.background }}>{footer}</View> : null}
-    </View>
+      {footer ? <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: Math.max(insets.bottom, 16), backgroundColor: c.background }}>{footer}</View> : null}
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,10 +1,11 @@
 import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { FieldLabel, Header, InfoNote, PrimaryButton, Screen, ScreenScroll, SecondaryButton, TextField } from '@/design-system';
 import { userMessageOf } from '@/domain/errors';
+import { putDraft } from '@/features/recipes/draft-store';
 import { saveLinkRecipe } from '@/features/recipes/recipe-service';
 import { normalizeRecipeUrl } from '@/features/recipes/recipe-source-links';
 import { parseRecipeText, type ParsedRecipeText } from '@/features/recipes/recipe-text-parser';
@@ -16,7 +17,9 @@ export default function ImportLinkScreen() {
   const db = useDb();
   const router = useRouter();
   const { settings, refresh } = useAppState();
-  const [url, setUrl] = useState('');
+  // jubu1dan://recipes/import-link?url=... 로 열리면 링크를 미리 채운다.
+  const params = useLocalSearchParams<{ url?: string }>();
+  const [url, setUrl] = useState(typeof params.url === 'string' ? params.url : '');
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState('');
   const [note, setNote] = useState('');
@@ -25,7 +28,7 @@ export default function ImportLinkScreen() {
 
   const openDraft = (parsed: ParsedRecipeText, sourceUrl: string | undefined, sourceLabel?: string) => {
     const draft = { ...parsed, title: title.trim() || parsed.title, sourceUrl, sourceLabel };
-    router.push({ pathname: '/recipes/new', params: { draft: JSON.stringify(draft) } });
+    router.push({ pathname: '/recipes/new', params: { draftId: putDraft(draft) } });
   };
 
   /** 사용자가 누른 링크 하나만 연다. 본문·설명란·메인 댓글의 글에서 재료와 순서만 가져온다. */

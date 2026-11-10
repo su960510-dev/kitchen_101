@@ -46,8 +46,9 @@ describe('parseRecipeText', () => {
     expect(parsed.servings).toBe(2);
     expect(parsed.minutes).toBe(15);
     expect(parsed.ingredients.map((i) => i.name)).toEqual(['김치', '밥', '대파', '참기름', '소금']);
-    expect(parsed.ingredients[4]).toEqual({ name: '소금', text: '약간' });
+    expect(parsed.ingredients[4]).toMatchObject({ name: '소금', text: '약간' });
     expect(parsed.steps).toEqual(['대파를 송송 썰어요.', '팬에 대파와 김치를 볶아요.', '밥을 넣고 고루 섞어 주세요.', '참기름을 둘러 마무리해요.']);
+    expect(parsed.ingredients.every((i) => i.group === '재료')).toBe(true);
   });
 
   it('reads comma-separated ingredients on one line, like a video description', () => {
@@ -110,19 +111,48 @@ describe('SNS caption style', () => {
 
   it('collects ingredients across sub-sections and skips tips and titles', () => {
     expect(parsed.ingredients.map((i) => i.name)).toEqual(['식빵', '계란', '우유', '메이플시럽', '시나몬', '설탕', '소금']);
-    expect(parsed.ingredients.find((i) => i.name === '우유')).toEqual({ name: '우유', quantity: 3, unit: '스푼' });
-    expect(parsed.ingredients.find((i) => i.name === '시나몬')).toEqual({ name: '시나몬', quantity: 0.5, unit: undefined });
+    expect(parsed.ingredients.find((i) => i.name === '우유')).toMatchObject({ name: '우유', quantity: 3, unit: '큰술', group: '재료' });
+    expect(parsed.ingredients.find((i) => i.name === '시나몬')).toMatchObject({ name: '시나몬', quantity: 0.5, unit: undefined, note: '단위 확인', group: '양념' });
   });
 
-  it('joins wrapped numbered steps and attaches tips', () => {
-    expect(parsed.steps).toEqual([
-      '계란과 우유를 섞어 식빵을 충분히 적셔요',
-      '버터 두른 팬에 [중불]로 앞뒤 3분씩 구워요 (팁: 센 불이면 금방 타요)',
-      '소스를 뿌려 마무리해요',
-    ]);
+  it('joins wrapped numbered steps into clean sentences and moves tips out', () => {
+    expect(parsed.steps).toEqual(['계란과 우유를 섞어 식빵을 충분히 적셔요.', '버터 두른 팬에 중불로 앞뒤 3분씩 구워요.', '소스를 뿌려 마무리해요.']);
+    expect(parsed.tips).toEqual(['버터는 무염이 좋아요.', '센 불이면 금방 타요.']);
   });
 
   it('does not treat a step starting with 재료 as a header', () => {
     expect(parseRecipeText('만드는 법\n1. 재료를 손질해요.').steps).toEqual(['재료를 손질해요.']);
   });
 });
+
+describe('normalizeRecipe', () => {
+  const { normalizeRecipe, cleanText, finishSentence } = jest.requireActual('@/features/recipes/recipe-normalizer');
+
+  it('cleans decorations and chat marks', () => {
+    expect(cleanText('맛있어요 ㅎㅎ!! 🤤')).toBe('맛있어요!');
+    expect(cleanText('[약불]에서 5분~~')).toBe('약불에서 5분');
+    expect(finishSentence('끓여요 !')).toBe('끓여요.');
+    expect(finishSentence('볶아 주세요')).toBe('볶아 주세요.');
+  });
+
+  it('unifies units, moves parentheses to notes and removes duplicates', () => {
+    const r = normalizeRecipe({
+      title: '맛있는 찌개..!! 🍲',
+      ingredients: [
+        { name: '간장', quantity: 1, unit: 'T' },
+        { name: '설탕', quantity: 1, unit: 't' },
+        { name: '물', quantity: 500, unit: 'cc' },
+        { name: '대파(흰 부분)', quantity: 1, unit: '대' },
+        { name: '간장', quantity: 2, unit: '큰술' },
+        { name: '고춧가루', quantity: 2 },
+      ],
+      steps: ['  ', '끓여요'],
+    });
+    expect(r.title).toBe('맛있는 찌개');
+    expect(r.ingredients.map((i: { name: string; unit?: string }) => `${i.name}:${i.unit ?? ''}`)).toEqual(['간장:큰술', '설탕:작은술', '물:ml', '대파:대', '고춧가루:']);
+    expect(r.ingredients[3].note).toBe('흰 부분');
+    expect(r.ingredients[4].note).toBe('단위 확인');
+    expect(r.steps).toEqual(['끓여요.']);
+  });
+});
+

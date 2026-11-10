@@ -2,6 +2,7 @@ import { AppError } from '@/domain/errors';
 
 import type { ParsedRecipeText } from '../recipe-text-parser';
 import { normalizeRecipeUrl } from '../recipe-source-links';
+import { cleanTitle } from '../recipe-normalizer';
 import { parseRecipeText } from '../recipe-text-parser';
 
 import { extractBodyText, extractJsonLdRecipe, pageTitle, previewCaption, richness } from './html-extract';
@@ -61,9 +62,15 @@ export function isCaptionOnlyHost(url: string): boolean {
   return /(^|\.)(instagram\.com|instagr\.am)$/.test(new URL(url).hostname);
 }
 
+/** 캡션 첫 줄을 제목으로 쓴다(정리 규칙의 제목 길이를 따른다). */
+export function captionTitle(caption: string): string | undefined {
+  return cleanTitle(caption.split('\n').find((l) => /[가-힣a-zA-Z]/.test(l)));
+}
+
 export function parsePage(html: string, captionOnly = false): { parsed: ParsedRecipeText; source: ImportSource } | null {
   const caption = previewCaption(html);
   const fromCaption = caption ? parseRecipeText(caption) : null;
+  if (fromCaption && !fromCaption.title && caption) fromCaption.title = captionTitle(caption);
   if (captionOnly) return fromCaption && fromCaption.ingredients.length ? { parsed: fromCaption, source: '게시물 캡션' } : null;
   const structured = extractJsonLdRecipe(html);
   if (structured && structured.ingredients.length) return { parsed: structured, source: '레시피 구조 데이터' };

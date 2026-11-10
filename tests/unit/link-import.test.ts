@@ -31,9 +31,9 @@ describe('html extraction', () => {
     expect(r.title).toBe('두부조림 & 밥');
     expect(r.servings).toBe(2);
     expect(r.minutes).toBe(70);
-    expect(r.ingredients[0]).toEqual({ name: '두부', quantity: 1, unit: '모' });
-    expect(r.ingredients[1]).toEqual({ name: '간장', quantity: 2, unit: 'T' });
-    expect(r.ingredients[3]).toEqual({ name: '고명' });
+    expect(r.ingredients[0]).toMatchObject({ name: '두부', quantity: 1, unit: '모' });
+    expect(r.ingredients[1]).toMatchObject({ name: '간장', quantity: 2, unit: '큰술' });
+    expect(r.ingredients[3]).toMatchObject({ name: '고명' });
     expect(r.steps).toEqual(['두부를 썰어요.', '양념을 부어 졸여요.']);
   });
 
@@ -129,6 +129,17 @@ describe('instagram caption', () => {
     expect(r.source).toBe('게시물 캡션');
     expect(r.parsed.ingredients.map((i) => i.name)).toEqual(['밥', '계란']);
     expect(r.parsed.steps).toEqual(['계란을 볶아요.', '밥을 넣어요.']);
+  });
+
+  it('strips the prefix even when the closing quote is cut off', () => {
+    const cut = '<meta property="og:description" content="6,431 likes, 120 comments - cook on August 21, 2026: &quot;주말 볶음밥 레시피 공유해요&#10;재료&#10;밥 1공기&#10;계란 2개">';
+    expect(previewCaption(cut)?.startsWith('주말 볶음밥')).toBe(true);
+    expect(parsePage(cut, true)?.parsed.title).toBe('주말 볶음밥 레시피 공유해요');
+  });
+
+  it('falls back to the first caption line for the title', () => {
+    const long = '<meta property="og:description" content="오늘은 정말 오래 기다리신 우리 집 최애 메뉴를 드디어 공개합니다 여러분&#10;재료&#10;밥 1공기&#10;계란 2개">';
+    expect(parsePage(long, true)?.parsed.title).toBe('오늘은 정말 오래 기다리신 우리 집 최애 메뉴를 드디어…');
   });
 
   it('returns null when the caption has no ingredients', () => {

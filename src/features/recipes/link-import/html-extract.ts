@@ -1,3 +1,4 @@
+import { normalizeRecipe } from '../recipe-normalizer';
 import { parseIngredient, parseRecipeText, type ParsedRecipeText } from '../recipe-text-parser';
 
 /** HTML 문자열에서 레시피 초안을 찾는다. 순수 함수라 기기·테스트 어디서나 같은 결과를 낸다. */
@@ -87,13 +88,13 @@ export function extractJsonLdRecipe(html: string): ParsedRecipeText | null {
     if (!ingredients.length && !steps.length) continue;
     const yieldText = Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield;
     const servings = /(\d+)/.exec(String(yieldText ?? ''))?.[1];
-    return {
+    return normalizeRecipe({
       title: typeof recipe.name === 'string' ? decodeEntities(recipe.name).trim() : undefined,
       servings: servings ? Number(servings) : undefined,
       minutes: isoMinutes(recipe.totalTime) ?? isoMinutes(recipe.cookTime),
       ingredients,
       steps,
-    };
+    });
   }
   return null;
 }
@@ -148,8 +149,9 @@ export function previewCaption(html: string): string | undefined {
   const m = /<meta[^>]+(?:property|name)=["']og:description["'][^>]+content="([^"]*)"/i.exec(html) ?? /<meta[^>]+content="([^"]*)"[^>]+(?:property|name)=["']og:description["']/i.exec(html);
   if (!m) return undefined;
   let text = decodeEntities(m[1]).trim();
-  const quoted = /^[^\n]{0,120}?[:：]\s*["“](.*)["”]\s*$/s.exec(text);
-  if (quoted) text = quoted[1];
+  // 끝 따옴표가 잘려 없는 경우도 있어 앞부분만 확인해 떼어 낸다.
+  const prefix = /^[^\n]{0,160}?(?:on [A-Z][a-z]+ \d{1,2}, \d{4}|님|\d{4}년 \d{1,2}월 \d{1,2}일)?\s*[:：]\s*["“]/.exec(text);
+  if (prefix && /(likes?|comments?|좋아요|댓글|on Instagram)/i.test(prefix[0])) text = text.slice(prefix[0].length).replace(/["”]\s*$/, '');
   return text || undefined;
 }
 

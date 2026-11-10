@@ -14,7 +14,7 @@ npm run audit:licenses
 
 | 항목 | 결과 |
 | --- | --- |
-| Jest 11개 파일 134개 | 통과 |
+| Jest 11개 파일 138개 | 통과 |
 | TypeScript strict | 통과 |
 | ESLint | 통과 |
 | `expo-doctor` 20개 | 통과 |
@@ -27,7 +27,7 @@ npm run audit:licenses
 
 | 환경 | 상태 |
 | --- | --- |
-| iOS 시뮬레이터 | **미검증** (Xcode 라이선스 미동의로 실행 불가) |
+| iOS 시뮬레이터 | iPhone 18 Pro(iOS 27.2) Release 빌드 실행, 링크 불러오기 흐름 확인 (2026-11-10) |
 | iOS 실기기 | iPhone XS(iOS 18.7.11), 무료 개인 팀 서명 Release 빌드 설치·실행 확인 (2026-11-10). 기능별 확인은 사용자 테스트 대기 |
 | Android 에뮬레이터 | **미검증** |
 | Android 실기기 | **미검증** (연결된 기기 없음) |

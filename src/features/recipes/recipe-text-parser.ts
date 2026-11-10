@@ -2,12 +2,18 @@
  * 사용자가 직접 붙여넣은 레시피 글을 재료·조리 순서 초안으로 나눈다. 기기 안에서만 동작하고 네트워크를 쓰지 않는다.
  * 결과는 사용자가 편집기에서 확인·수정한 뒤 저장한다. 붙여넣은 원문은 저장하지 않는다.
  */
+import { normalizeRecipe } from './recipe-normalizer';
+
 export interface ParsedIngredient {
   name: string;
   quantity?: number;
   unit?: string;
   /** '약간', '적당량' 같은 비정량 표현 */
   text?: string;
+  /** 괄호 속 설명, '단위 확인' 같은 표시 */
+  note?: string;
+  /** '재료' | '양념' */
+  group?: '재료' | '양념';
 }
 
 export interface ParsedRecipeText {
@@ -16,6 +22,8 @@ export interface ParsedRecipeText {
   minutes?: number;
   ingredients: ParsedIngredient[];
   steps: string[];
+  /** 단계에서 떼어 낸 팁 */
+  tips?: string[];
 }
 
 const UNITS = [
@@ -72,6 +80,11 @@ export function parseIngredient(raw: string): ParsedIngredient | null {
   return null;
 }
 
+/** 문장이 끝났는지(팁이 다음 줄로 이어지는지 판단) */
+function isCompleteSentence(line: string): boolean {
+  return /(요|다|죠|세요|니다|해요|봐요)[.!?~]*$/.test(line);
+}
+
 function looksLikeStep(line: string): boolean {
   return NUMBERED.test(line) || (line.length >= 8 && /(요|다|세요|니다|주세요|줍니다)[.!~]?$/.test(line));
 }
@@ -116,12 +129,27 @@ export function parseRecipeText(input: string): ParsedRecipeText {
     const name = ingredient.name.replace(SPOON_PHRASE, ' ').replace(/\s+/g, ' ').trim();
     if (!name || seen.has(name)) return;
     seen.add(name);
-    result.ingredients.push({ ...ingredient, name });
+    result.ingredients.push({ ...ingredient, name, group });
   };
   let mode: 'unknown' | 'ingredients' | 'steps' = 'unknown';
   let numberedSteps = false;
-  // '만드는 법' 같은 제목이 있으면 그 앞의 문장(인사말, 소개)은 순서로 보지 않는다.
+  let group: '재료' | '양념' = '재료';
+  const tips: string[] = [];
+  // 끝나지 않은 팁은 다음 줄과 이어 붙인다.
+  let tipOpen = false;
+  const addTip = (text: string) => {
+    tips.push(text);
+    tipOpen = !isCompleteSentence(text);
+  };
+  const continueTip = (text: string): boolean => {
+    if (!tipOpen || !tips.length) return false;
+    tips[tips.length - 1] = `${tips[tips.length - 1]} ${text}`;
+    tipOpen = !isCompleteSentence(text);
+    return true;
+  };
+  // '만드는 법' 제목이 있으면 그 아래만 순서로 본다. '재료' 제목만 있으면 그 앞의 문장(인사말, 소개)은 순서가 아니다.
   const hasStepHeader = lines.some((l) => STEP_HEADER.test(l.text));
+  const firstHeader = lines.findIndex((l) => STEP_HEADER.test(l.text) || INGREDIENT_HEADER.test(l.text));
 
   for (const [index, { text: line, tip }] of lines.entries()) {
     const servings = /(\d+)\s*인분/.exec(line);
@@ -134,8 +162,9 @@ export function parseRecipeText(input: string): ParsedRecipeText {
       continue;
     }
     const header = INGREDIENT_HEADER.exec(line);
-    if (header && mode !== 'steps') {
+    if (header && (mode !== 'steps' || !line.slice(header[0].length).trim())) {
       mode = 'ingredients';
+      group = /양념|소스/.test(header[1]) ? '양념' : '재료';
       const rest = line.slice(header[0].length).trim();
       // `재료: 계란 2개, 대파 1대` 처럼 한 줄에 이어 쓴 경우
       rest.split(/[,，、·/]/).forEach((part) => {
@@ -154,20 +183,35 @@ export function parseRecipeText(input: string): ParsedRecipeText {
         if (mode === 'unknown') mode = 'ingredients';
         continue;
       }
-      // 재료 구역 안의 팁·소제목·보충 설명은 건너뛴다.
-      if (mode === 'ingredients' && (tip || isGroupTitle(line) || !looksLikeStep(line) || hasStepHeader)) continue;
+      // 재료 구역 안의 소제목(다대기, 부추무침 등)은 양념 묶음을 시작하고, 팁은 따로 모은다.
+      if (mode === 'ingredients') {
+        if (isGroupTitle(line) && !/(은|는|고|면)$/.test(line)) {
+          tipOpen = false;
+          group = result.ingredients.length ? '양념' : '재료';
+        } else if (tip) addTip(line);
+        else continueTip(line);
+        if (tip || isGroupTitle(line) || !looksLikeStep(line) || hasStepHeader) continue;
+      }
     }
 
-    if (mode === 'steps' || (!hasStepHeader && looksLikeStep(line))) {
+    const mayGuessStep = !hasStepHeader && (firstHeader === -1 || index > firstHeader);
+    if (mode === 'steps' || (mayGuessStep && looksLikeStep(line))) {
       mode = 'steps';
       const last = result.steps.length - 1;
+      if (tip) {
+        addTip(line);
+        continue;
+      }
+      // 새 번호 단계는 이어 쓰던 팁을 끝낸다.
+      if (NUMBERED.test(line)) tipOpen = false;
+      else if (continueTip(line)) continue;
       if (NUMBERED.test(line)) {
         numberedSteps = true;
         const step = line.replace(NUMBERED, '').trim();
         if (step) result.steps.push(step);
       } else if (last >= 0 && (tip || numberedSteps)) {
         // 번호 단계의 다음 줄과 팁은 앞 단계에 이어 붙인다.
-        result.steps[last] = tip ? `${result.steps[last]} (팁: ${line})` : `${result.steps[last]} ${line}`;
+        result.steps[last] = `${result.steps[last]} ${line}`;
       } else {
         result.steps.push(line.replace(BULLET, '').trim());
       }
@@ -177,5 +221,6 @@ export function parseRecipeText(input: string): ParsedRecipeText {
     // 첫 줄의 짧은 문장은 제목으로 본다.
     if (index === 0 && !result.title && line.length <= 40 && !servings) result.title = line.replace(BULLET, '');
   }
-  return result;
+  if (tips.length) result.tips = tips;
+  return normalizeRecipe(result);
 }
